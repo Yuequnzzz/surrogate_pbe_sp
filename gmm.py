@@ -139,14 +139,17 @@ if __name__ == '__main__':
     L_mid = np.mean([L_bounds[:-1], L_bounds[1:]], axis=0)  # [um]
     x = L_mid
 
-    mu, sigma, weights = split_gmm(fp, fn, x, dL, plot_fig=True, n_clusters=8)
+    mu, sigma, weights = split_gmm(fp, fn, x, dL, plot_fig=True, n_clusters=12)
 
     # save the data
+    # create a empty dataframe
     cols = ['mu' + str(j) for j in range(len(mu[0]))] + ['sigma' + str(j) for j in range(len(sigma[0]))] + \
            ['weights' + str(j) for j in range(len(weights[0]))]
+    df_gmm = pd.DataFrame(columns=cols)
 
     for i in range(len(mu)):
-        # create the dataframe
-        df = pd.DataFrame(np.concatenate((mu[i], sigma[i], weights[i]), axis=1), columns=cols)
-        # save the data
-        df.to_csv(export_path + 'gmm_' + str(i) + '.csv', index=False)
+        df = pd.DataFrame(np.concatenate((mu[i].reshape(1, -1), sigma[i].reshape(1, -1), weights[i].reshape(1, -1)),
+                                         axis=1), columns=cols)
+        df_gmm = df_gmm._append(df, ignore_index=True)
+    # save the dataframes into csv files
+    df_gmm.to_csv(export_path + 'gmm_' + fn, index=False)
