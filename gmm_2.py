@@ -14,7 +14,7 @@ def gmm_bic_score(estimator, X):
 
 
 def model_selection(min_n, max_n):
-    param_grid = {"n_components": range(min_n, max_n), "covariance_type": ["spherical", "tied", "diag", "full"]}
+    param_grid = {"n_components": range(min_n, max_n)}
     grid_search = GridSearchCV(
         GaussianMixture(), param_grid=param_grid, scoring=gmm_bic_score
     )
@@ -50,16 +50,39 @@ def split_gmm(filepath, file_name, x, dL, plot_fig=False, n_clusters=None):
     if n_clusters is not None:
         gmm = GaussianMixture(n_components=n_clusters)
     else:
-        # get the peaks of the pdf at time 0 to initialize the number of clusters
-        # todo: if the distribution fluctuates too much, the number of clusters will be too large
+        # use the GridSearchCV to find the best n_clusters
+        # gmm = model_selection(2, 12)
+        # p0 = data.iloc[0, :].values * dL  # fit the data at time 0
+        # d0 = np.random.choice(a=x, size=5 * round(total_crystals[0]), p=p0)
+        # d0 = d0.reshape(-1, 1)
+        # gmm.fit(d0)
+        # n_clusters = gmm.best_params_['n_components']
+        # print(n_clusters)
+        # gmm = GaussianMixture(n_components=n_clusters)
         peaks_id, _ = find_peaks(data.iloc[0, :], height=0.001)
         n_clusters = len(peaks_id)
         gmm = GaussianMixture(n_components=n_clusters)
+
+    # initialize the means and covariances
+    peaks_id, _ = find_peaks(data.iloc[0, :], height=0.001)
+    centers_init = x[peaks_id].reshape(-1, 1)
+    covariances_init = 100 * np.ones((len(peaks_id), 1))
+    weights_init = _['peak_heights']/np.sum(_['peak_heights'])
+    p0 = data.iloc[0, :].values * dL  # fit the data at time 0
+    d0 = np.random.choice(a=x, size=5 * round(total_crystals[0]), p=p0)
+    d0 = d0.reshape(-1, 1)
+    gm0 = GaussianMixture(n_components=len(peaks_id), means_init=centers_init,
+                          weights_init=weights_init)
+    gm0.fit(d0)
+    mu0 = gm0.means_
+    sigma0 = gm0.covariances_
+    weights0 = gm0.weights_
 
     # read the data row by row and fit the data
     mu_all = []
     sigma_all = []
     weights_all = []
+    precision_all = []
     n_rows = data.shape[0]
     for i in range(n_rows):
         # get the data(i.e. the pdf) of the row
@@ -72,9 +95,11 @@ def split_gmm(filepath, file_name, x, dL, plot_fig=False, n_clusters=None):
         gmm.fit(d)
         # return the means, covariances and weights
         m, s, w = gmm.means_, gmm.covariances_, gmm.weights_
+        precision = gmm.precisions_
         mu_all.append(m)
         sigma_all.append(s)
         weights_all.append(w)
+        precision_all.append(precision)
 
     # plot the data
     if plot_fig:
@@ -90,8 +115,9 @@ def split_gmm(filepath, file_name, x, dL, plot_fig=False, n_clusters=None):
         plt.plot(x, data.iloc[0, :], label="start_ori", color="b")
         # todo: confused about pdf
         y_all = np.zeros((1, x.size))
-        for i in range(n_clusters):
-            y_all += weights_all[0][i] * norm.pdf(x, mu_all[0][i], sigma_all[0][i])
+        for i in range(len(peaks_id)):
+            # y_all += weights_all[0][i] * norm.pdf(x, mu_all[0][i], sigma_all[0][i])
+            y_all += weights0[i] * norm.pdf(x, mu0[i], sigma0[i])
         plt.plot(x, y_all.reshape(-1, 1), label="estimate", color="g", ls="--")
         plt.legend()
 
@@ -105,7 +131,7 @@ def split_gmm(filepath, file_name, x, dL, plot_fig=False, n_clusters=None):
         plt.xlabel(r"size $L$ [um]")
         plt.show()
 
-    return mu_all, sigma_all, weights_all
+    return mu_all, sigma_all, weights_all, precision_all
 
 
 # todo: find the best n_clusters
@@ -123,5 +149,5 @@ if __name__ == '__main__':
     L_mid = np.mean([L_bounds[:-1], L_bounds[1:]], axis=0)  # [um]
     x = L_mid
 
-    mu_ini, sigma_ini, weights_ini = split_gmm(fp, fn, x, dL, plot_fig=True, n_clusters=15)
+    mu_ini, sigma_ini, weights_ini, precision_ini = split_gmm(fp, fn, x, dL, plot_fig=True)
     print(mu_ini)
