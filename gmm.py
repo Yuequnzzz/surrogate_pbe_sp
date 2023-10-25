@@ -5,6 +5,7 @@ from sklearn.mixture import GaussianMixture
 from scipy.stats import norm
 from sklearn.model_selection import GridSearchCV
 from scipy.signal import find_peaks
+
 from base_functions import *
 
 
@@ -128,6 +129,7 @@ def split_gmm(filepath, file_name, x, dL, plot_fig=False, n_clusters=None):
 if __name__ == '__main__':
     fp = 'data/'
     fn = 'PBEsolver_InputMat_231015_2234_runID1.csv'
+    export_path = 'data/gmm_results/'
     n = 8
 
     # load x
@@ -138,4 +140,13 @@ if __name__ == '__main__':
     x = L_mid
 
     mu, sigma, weights = split_gmm(fp, fn, x, dL, plot_fig=True, n_clusters=8)
-    print(mu)
+
+    # save the data
+    cols = ['mu' + str(j) for j in range(len(mu[0]))] + ['sigma' + str(j) for j in range(len(sigma[0]))] + \
+           ['weights' + str(j) for j in range(len(weights[0]))]
+
+    for i in range(len(mu)):
+        # create the dataframe
+        df = pd.DataFrame(np.concatenate((mu[i], sigma[i], weights[i]), axis=1), columns=cols)
+        # save the data
+        df.to_csv(export_path + 'gmm_' + str(i) + '.csv', index=False)
