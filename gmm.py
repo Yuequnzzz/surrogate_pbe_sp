@@ -5,20 +5,7 @@ from sklearn.mixture import GaussianMixture
 from scipy.stats import norm
 from sklearn.model_selection import GridSearchCV
 from scipy.signal import find_peaks
-
-
-def gmm_bic_score(estimator, X):
-    """Callable to pass to GridSearchCV that will use the BIC score."""
-    # Make it negative since GridSearchCV expects a score to maximize
-    return -estimator.bic(X)
-
-
-def model_selection(min_n, max_n):
-    param_grid = {"n_components": range(min_n, max_n), "covariance_type": ["spherical", "tied", "diag", "full"]}
-    grid_search = GridSearchCV(
-        GaussianMixture(), param_grid=param_grid, scoring=gmm_bic_score
-    )
-    return grid_search
+from base_functions import *
 
 
 def split_gmm(filepath, file_name, x, dL, plot_fig=False, n_clusters=None):
@@ -48,30 +35,58 @@ def split_gmm(filepath, file_name, x, dL, plot_fig=False, n_clusters=None):
 
     # initialize the number of clusters
     if n_clusters is not None:
-        gmm = GaussianMixture(n_components=n_clusters)
+        n_clusters = n_clusters
     else:
         # get the peaks of the pdf at time 0 to initialize the number of clusters
         # todo: if the distribution fluctuates too much, the number of clusters will be too large
         peaks_id, _ = find_peaks(data.iloc[0, :], height=0.001)
         n_clusters = len(peaks_id)
-        gmm = GaussianMixture(n_components=n_clusters)
 
     # read the data row by row and fit the data
     mu_all = []
     sigma_all = []
     weights_all = []
+    n_possible = []
     n_rows = data.shape[0]
+    gmm_all = []
+    # find the best n_clusters for each row
     for i in range(n_rows):
-        # get the data(i.e. the pdf) of the row
-        p = data.iloc[i, :].values * dL
-        # sample x based on the pdf
-        d = np.random.choice(a=x, size=5 * round(total_crystals[i]), p=p)
-        # reshape the data
-        d = d.reshape(-1, 1)
-        # fit the data
-        gmm.fit(d)
-        # return the means, covariances and weights
-        m, s, w = gmm.means_, gmm.covariances_, gmm.weights_
+        gmm, n = gm_best_model(
+            data.iloc[i, :],
+            x,
+            dL,
+            total_crystals[i],
+            err_threshold=0.001,
+            n_component=n_clusters,
+            optimize=True
+        )
+        print('the best n_component for row %d is %d' % (i, n))
+        n_possible.append(n)
+        gmm_all.append(gmm)
+    # get the maximum n_clusters
+    n_clusters = max(n_possible)
+    print('the maximum n_component is %d' % n_clusters)
+    # find all the index where the value equals maximum n_clusters
+    id_non_max = [i for i, k in enumerate(n_possible) if k != n_clusters]
+    # fit the data again if the number of clusters is not the maximum
+    for i in id_non_max:
+        gmm, n = gm_best_model(
+            data.iloc[i, :],
+            x,
+            dL,
+            total_crystals[i],
+            err_threshold=0.001,
+            n_component=n_clusters,
+            optimize=False
+        )
+        gmm_all[i] = gmm
+        n_possible[i] = n
+
+    # get the means, covariances and weights
+    for i in range(n_rows):
+        m = gmm_all[i].means_
+        s = gmm_all[i].covariances_
+        w = gmm_all[i].weights_
         mu_all.append(m)
         sigma_all.append(s)
         weights_all.append(w)
@@ -88,7 +103,6 @@ def split_gmm(filepath, file_name, x, dL, plot_fig=False, n_clusters=None):
 
         plt.subplot(3, 1, 2)
         plt.plot(x, data.iloc[0, :], label="start_ori", color="b")
-        # todo: confused about pdf
         y_all = np.zeros((1, x.size))
         for i in range(n_clusters):
             y_all += weights_all[0][i] * norm.pdf(x, mu_all[0][i], sigma_all[0][i])
@@ -123,5 +137,5 @@ if __name__ == '__main__':
     L_mid = np.mean([L_bounds[:-1], L_bounds[1:]], axis=0)  # [um]
     x = L_mid
 
-    mu_ini, sigma_ini, weights_ini = split_gmm(fp, fn, x, dL, plot_fig=True, n_clusters=15)
-    print(mu_ini)
+    mu, sigma, weights = split_gmm(fp, fn, x, dL, plot_fig=True, n_clusters=8)
+    print(mu)
