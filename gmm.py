@@ -3,7 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.mixture import GaussianMixture
 from scipy.stats import norm
-from sklearn.model_selection import GridSearchCV
 from scipy.signal import find_peaks
 
 from base_functions import *
@@ -25,9 +24,6 @@ def split_gmm(filepath, file_name, x, dL, plot_fig=False, n_clusters=None):
     for i in data.columns:
         if 'pop_bin' not in i:
             data.drop(i, axis=1, inplace=True)
-    # count the number of elements larger than 0 in each row
-    # todo: it is not feasible since the non-zero elements are still around 500
-    n_elements = [np.count_nonzero(data.iloc[i, :]) for i in range(data.shape[0])]
     # copy the data
     psd_data = data.copy(deep=True)
     # normalize psd to pdf
@@ -150,6 +146,6 @@ if __name__ == '__main__':
     for i in range(len(mu)):
         df = pd.DataFrame(np.concatenate((mu[i].reshape(1, -1), sigma[i].reshape(1, -1), weights[i].reshape(1, -1)),
                                          axis=1), columns=cols)
-        df_gmm = df_gmm._append(df, ignore_index=True)
+        df_gmm = pd.concat([df_gmm, df], ignore_index=True)
     # save the dataframes into csv files
     df_gmm.to_csv(export_path + 'gmm_' + fn, index=False)

@@ -4,6 +4,7 @@
 # @File : base_function.py
 # @Project : GMM
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
 from scipy.stats import norm
 from sklearn.metrics import mean_squared_error, mean_absolute_error
@@ -95,5 +96,56 @@ def gm_best_model(data_bins_vec, x_vec, dL, total_crystals, err_threshold, n_com
 
     return gmm, n_component
 
+
+def psd_2_pdf(data):
+    """
+    transform the psd data into pdf
+    :param data: the psd data
+    :return: the pdf
+    """
+    # judge whether the data is a vector
+    if len(data.shape) == 1:
+        data = pd.DataFrame(data).T
+    # calculate the sum of each row
+    total_num = np.sum(data, axis=1)
+    # convert the series into numpy array
+    total_num = np.array(total_num).reshape(-1, 1)
+    # calculate the pdf
+    pdf = data / total_num
+    # check whether the sum of each row is 1
+    for i in range(pdf.shape[0]):
+        if abs(sum(pdf.iloc[i, :]) - 1) > 0.0001:
+            raise ValueError('The sum of each row is not 1')
+    return pdf
+
+
+def cdf_func(pdf_data):
+    """
+    calculate the cdf of the data
+    :param pdf_data: Dataframe, the probability density data
+    :param x: vector, the x values
+    :return: Dataframe, the cdf
+    """
+    # create a dataframe with the same shape as pdf_data
+    cdf = pd.DataFrame(np.zeros(pdf_data.shape))
+    # calculate the cumulative sum
+    for i in range(pdf_data.shape[0]):
+        cdf.iloc[i, :] = np.cumsum(pdf_data.iloc[i, :])
+    return cdf
+
+
+if __name__ == '__main__':
+    filepath = 'data/'
+    file_name = 'PBEsolver_InputMat_231015_2234_runID1.csv'
+    data = pd.read_csv(filepath + file_name)
+    for i in data.columns:
+        if 'pop_bin' not in i:
+            data.drop(i, axis=1, inplace=True)
+    # get the pdf
+    pdf = psd_2_pdf(data)
+    print(pdf)
+    # get the cdf
+    cdf = cdf_func(pdf)
+    print(cdf)
 
 
