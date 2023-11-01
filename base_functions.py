@@ -56,7 +56,7 @@ def error_gmm(y_true, x, mu, sigma, weights):
     return rmse
 
 
-def gm_best_model(data_bins_vec, x_vec, dL, total_crystals, err_threshold, n_component, optimize=False):
+def gm_best_model(data_bins_vec, x_vec, dL, total_crystals, err_threshold, n_component, optimize=False, max_component=30):
     """
     find the best n_component for gmm
     :param data_bins_vec: the data of bin values in the form of (, n_features), where the sample is transformed into pdf
@@ -85,7 +85,7 @@ def gm_best_model(data_bins_vec, x_vec, dL, total_crystals, err_threshold, n_com
         # calculate the errors
         rmse = error_gmm(data_bins_vec, x_vec, m, s, w)
         print(f"rmse = {rmse}")
-        while rmse > err_threshold:
+        while rmse > err_threshold and n_component < max_component:
             print('It needs to add clusters')
             n_component += 1
             # todo: if the deviation from threshold is too large, then add more components
