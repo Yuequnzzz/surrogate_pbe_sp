@@ -9,15 +9,16 @@ def load_data(save_name):
     :return: tuple, input matrix for PBE solver, PBE solver results
     '''
     # Input
-
-    input_mat = pd.read_csv(f"data/gmm_results/{save_name}.csv")
+    input_mat = pd.read_csv(f"data/PBE_inputMatrix/{save_name}.csv")
     print("Input matrix shape: ", input_mat.shape)
+    input_bins = pd.read_csv(f"data/gmm_results/gmm_{save_name}_bins.csv")
+
 
     # Output
     results = {}
     for runID in input_mat["runID"]:
         try:
-            results[runID] = pd.read_csv(f"PBEsolver_outputs/PBEsolver_{save_name}_runID{int(runID)}.csv")
+            results[runID] = pd.read_csv(f"PBE_outputs/PBEsolver_{save_name}_runID{int(runID)}.csv")
         except:
             pass
     print("PBE output files found: ", len(results))
@@ -38,8 +39,8 @@ def reformat_input_output(input_mat, results, t_sample_frac=0.25, no_sims=5000, 
         Tuple: Training data as input and output array
     """
     input_columns = ['runID', 'T0', 'dT', 'dt', 'S0', 'sol_k0', 'sol_kT', 'growth_k0', 'growth_kS',
-                     'nuc_k0', 'nuc_kS', 'ini_mu0'] + [f"inipop_bin{x}" for x in range(1000)]
-    output_columns = ["c"] + [f"pop_bin{x}" for x in range(1000)]
+                     'nuc_k0', 'nuc_kS', 'ini_mu0']
+    output_columns = ["c"]
 
     X, Y = [], []
     for runID, res in results.items():
