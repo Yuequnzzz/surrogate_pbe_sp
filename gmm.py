@@ -20,7 +20,21 @@ def split_gmm(filepath, file_name, x, dL, plot_fig=False, n_clusters=None):
     """
     # load data from csv file
     data = pd.read_csv(filepath + file_name)
-    total_crystals = data['mu0'].values
+    # determine whether the data is input matrix or output matrix
+    if 'PBEsolver' in file_name:
+        output_file = True
+        print('We are now dealing with the output matrix')
+    else:
+        output_file = False
+        print('We are now dealing with the input matrix')
+
+    # get the total number of crystals
+    if 'mu0' not in data.columns:
+        total_crystals = data['ini_mu0'].values
+    else:
+        total_crystals = data['mu0'].values
+
+    # drop the columns that are not related to the population
     for i in data.columns:
         if 'pop_bin' not in i:
             data.drop(i, axis=1, inplace=True)
@@ -63,7 +77,7 @@ def split_gmm(filepath, file_name, x, dL, plot_fig=False, n_clusters=None):
     # get the maximum n_clusters
     n_clusters = max(n_possible)
     print('the maximum n_component is %d' % n_clusters)
-    # find all the index where the value equals maximum n_clusters
+    # find all the index where the value does not equal maximum n_clusters
     id_non_max = [i for i, k in enumerate(n_possible) if k != n_clusters]
     # fit the data again if the number of clusters is not the maximum
     for i in id_non_max:
@@ -119,12 +133,11 @@ def split_gmm(filepath, file_name, x, dL, plot_fig=False, n_clusters=None):
     return mu_all, sigma_all, weights_all
 
 
-# todo: find the best n_clusters
-
 
 if __name__ == '__main__':
     fp = 'data/'
-    fn = 'PBEsolver_InputMat_231015_2234_runID1.csv'
+    # fn = 'PBEsolver_InputMat_231015_2234_runID1.csv'
+    fn = 'InputMat_231015_2234.csv'
     export_path = 'data/gmm_results/'
     n = 8
 
@@ -149,3 +162,4 @@ if __name__ == '__main__':
         df_gmm = pd.concat([df_gmm, df], ignore_index=True)
     # save the dataframes into csv files
     df_gmm.to_csv(export_path + 'gmm_' + fn, index=False)
+

@@ -38,6 +38,32 @@ def error_functions(y_true, y_pred):
     return rmse
 
 
+def error_func_scaled(y_true, y_pred):
+    """
+    calculate the error functions scaled by the sum of the true values
+    :param y_true: the true values
+    :param y_pred: the predicted values
+    :return: the scaled root mean squared error
+    """
+    # calculate the error functions
+    rmse = mean_squared_error(y_true, y_pred, squared=False)
+    s_rmse = rmse / np.sum(y_true)
+    return s_rmse
+
+
+def error_func_relative(y_true, y_pred):
+    """
+    calculate the relative error functions
+    :param y_true: the true values
+    :param y_pred: the predicted values
+    :return: the relative root mean squared error
+    """
+    e = np.abs(y_true - y_pred)
+    r_e = 1 - np.divide(e, y_true)
+    relative_error = np.sqrt(r_e)
+    return relative_error
+
+
 def error_gmm(y_true, x, mu, sigma, weights):
     """
     calculate the error functions of the gmm
@@ -56,7 +82,7 @@ def error_gmm(y_true, x, mu, sigma, weights):
     return rmse
 
 
-def gm_best_model(data_bins_vec, x_vec, dL, total_crystals, err_threshold, n_component, optimize=False):
+def gm_best_model(data_bins_vec, x_vec, dL, total_crystals, err_threshold, n_component, optimize=False, max_component=30):
     """
     find the best n_component for gmm
     :param data_bins_vec: the data of bin values in the form of (, n_features), where the sample is transformed into pdf
@@ -85,7 +111,7 @@ def gm_best_model(data_bins_vec, x_vec, dL, total_crystals, err_threshold, n_com
         # calculate the errors
         rmse = error_gmm(data_bins_vec, x_vec, m, s, w)
         print(f"rmse = {rmse}")
-        while rmse > err_threshold:
+        while rmse > err_threshold and n_component < max_component:
             print('It needs to add clusters')
             n_component += 1
             # todo: if the deviation from threshold is too large, then add more components
