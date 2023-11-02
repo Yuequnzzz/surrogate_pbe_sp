@@ -160,6 +160,53 @@ def cdf_func(pdf_data):
     return cdf
 
 
+def reformat_input_output(input_mat, output_mat, n_ob_input, n_ob_output, t_sample_frac=0.25, no_sims=5000, shuffle=False):
+    """
+    Reformat input and output data for training
+    :param input_mat: Dataframe, input matrix with observation info
+    :param output_mat: dict, all simulation results with observation info
+    :param n_ob_input: int, number of observations in input matrix
+    :param n_ob_output: int, number of observations in output matrix
+    :param t_sample_frac: Float, fraction of timepoints in each simulation to sample
+    :param no_sims: number of simulations to use
+    :param shuffle: bool, whether to shuffle dataset or not
+    :return: Tuple, training data as input and output array
+    """
+
+    input_columns = ['runID', 'T0', 'dT', 'dt', 'S0', 'sol_k0', 'sol_kT', 'growth_k0', 'growth_kS',
+                     'nuc_k0', 'nuc_kS', 'ini_mu0', 'width', 'middle'] + [f"ob_{x}" for x in range(n_ob_input)]
+    output_columns = ["c"] + [f"ob_{x}" for x in range(n_ob_output)]
+
+    X, Y = [], []
+    for runID, res in output_mat.items():
+        res = res.sample(frac=t_sample_frac)
+
+        no_timepoints = res.shape[0]
+        Y.append(np.array(res[output_columns]))
+
+        relevant_inputs = np.array(input_mat.query("runID == @runID")[input_columns])
+        relevant_inputs_repeated = np.vstack([relevant_inputs] * no_timepoints)
+
+        t_vec = np.array(res["t"])[..., np.newaxis]
+        x = np.hstack([t_vec, relevant_inputs_repeated])
+
+        X.append(x)
+        if len(X) > no_sims:
+            break
+
+    X = np.vstack(X)
+    Y = np.vstack(Y)
+
+    if shuffle:
+        ix = np.random.permutation(X.shape[0])
+        X = X[ix, :]
+        Y = Y[ix, :]
+
+    print("X, Y dimensions: ", X.shape, Y.shape)
+
+    return X, Y
+
+
 if __name__ == '__main__':
     filepath = 'data/'
     file_name = 'PBEsolver_InputMat_231015_2234_runID1.csv'

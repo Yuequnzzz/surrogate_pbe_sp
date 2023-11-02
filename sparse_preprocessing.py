@@ -2,8 +2,10 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 import copy
-from base_functions import psd_2_pdf, cdf_func, error_func_scaled, error_functions, error_func_relative
+from base_functions import psd_2_pdf, cdf_func, error_func_scaled, error_functions, error_func_relative, \
+    reformat_input_output
 import matplotlib.pyplot as plt
+
 
 def search_for_valid_region(cdf_data, lower_bound, upper_bound):
     """
@@ -105,6 +107,8 @@ def error_extrapolate(data_pdf, y_pre):
     for i in range(data_pdf.shape[0]):
         # error[i] = error_func_relative(np.asarray(data_pdf.iloc[i, :]), y_pre[i, :].reshape(-1, 1))
         # todo: think of a better way to calculate the error
+        a = data_pdf.iloc[i, :]
+        b = y_pre[i, :].reshape(-1, 1)
         error[i] = error_functions(data_pdf.iloc[i, :], y_pre[i, :].reshape(-1, 1))
     return error
 
@@ -133,10 +137,11 @@ def sparse_model(data_bins, valid_lower_bound, valid_upper_bound, n_ob_points, d
     return alert, ob_prob, ob_points_id, middle_id, width
 
 
-def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, output_n_ob_points, dL, error_threshold=0.01):
+def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, output_n_ob_points, dL,
+         error_threshold=0.01):
     # load the data
     # input matrix
-    file_path_in = 'data/'
+    file_path_in = 'data/PBE_inputMatrix/'
     data_input = pd.read_csv(file_path_in + f"{save_name}.csv")
     data_input_original = data_input.copy(deep=True)
     for i in data_input.columns:
@@ -144,73 +149,58 @@ def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, out
             data_input.drop(i, axis=1, inplace=True)
 
     # output matrix
-    file_path_out = 'data/'
+    file_path_out = 'data/PBE_outputs/'
     results = {}
+    data_output_original = {}
     for runID in data_input_original["runID"]:
         try:
-            results[runID] = pd.read_csv(file_path_out + f"PBEsolver_{save_name}_runID{int(runID)}.csv")
+            file = pd.read_csv(file_path_out + f"PBEsolver_{save_name}_runID{int(runID)}.csv")
+            file_original = file.copy(deep=True)
+            for m in file.columns:
+                if 'pop_bin' not in m:
+                    file.drop(m, axis=1, inplace=True)
+            results[runID] = file
+            data_output_original[runID] = file_original
         except:
             pass
-    data_output_original = copy.deepcopy(results)
-    for j in results.keys():
-        if 'pop_bin' not in results[j].columns:
-            results[j].drop(results[j].columns[0], axis=1, inplace=True)
 
     # get the necessary observation info and combine it to previous info
     input_alert, input_observe_points, input_observe_points_id, input_middle_id, input_width \
         = sparse_model(data_input, valid_lower_bound, valid_upper_bound, input_n_ob_points, dL)
     input_ob_columns = [f"ob_{x}" for x in range(input_n_ob_points)] + ['width'] + ['middle']
-    input_observe_df = pd.DataFrame(np.concatenate((input_observe_points, input_width.reshape(-1, 1), input_middle_id.reshape(-1, 1)), axis=1), columns=input_ob_columns)
+    input_observe_df = pd.DataFrame(
+        np.concatenate((input_observe_points, input_width.reshape(-1, 1), input_middle_id.reshape(-1, 1)), axis=1),
+        columns=input_ob_columns)
     input_mat = pd.concat([data_input_original, input_observe_df], axis=1)
 
-    # todo: the output observation info is not correct
+    output_mat = {}
     for k in results.keys():
-
         output_alert, output_observe_points, output_observe_points_id, output_middle_id, output_width \
             = sparse_model(results[k], valid_lower_bound, valid_upper_bound, output_n_ob_points, dL)
         output_ob_columns = [f"ob_{x}" for x in range(output_n_ob_points)] + ['width'] + ['middle']
-        output_observe_df = pd.DataFrame(np.concatenate((output_observe_points, output_width.reshape(-1, 1), output_middle_id.reshape(-1, 1)), axis=1), columns=output_ob_columns)
-        results[k] = pd.concat([data_output_original[k], output_observe_df], axis=1)
+        output_observe_df = pd.DataFrame(
+            np.concatenate((output_observe_points, output_width.reshape(-1, 1), output_middle_id.reshape(-1, 1)),
+                           axis=1), columns=output_ob_columns)
+        output_mat[k] = pd.concat([data_output_original[k], output_observe_df], axis=1)
 
+    # generate training data
+    X, Y = reformat_input_output(input_mat, output_mat, input_n_ob_points, output_n_ob_points, t_sample_frac=0.25,
+                                 no_sims=5000, shuffle=False)
 
+    # save the data as csv file
+    export_path = 'data/sparse_training_data/'
+    export_name = f"{save_name}_input_{input_n_ob_points}_{output_n_ob_points}.csv"
+    X_df = pd.DataFrame(X)
+    X_df.to_csv(export_path + export_name, index=False)
+    export_name = f"{save_name}_output_{input_n_ob_points}_{output_n_ob_points}.csv"
+    Y_df = pd.DataFrame(Y)
+    Y_df.to_csv(export_path + export_name, index=False)
 
-
-    input_columns = ['runID', 'T0', 'dT', 'dt', 'S0', 'sol_k0', 'sol_kT', 'growth_k0', 'growth_kS',
-                     'nuc_k0', 'nuc_kS', 'ini_mu0']
-    output_columns = ["c"]
-    #
-    # X, Y = [], []
-    # for runID, res in results.items():
-    #     res = res.sample(frac=t_sample_frac)
-    #
-    #     no_timepoints = res.shape[0]
-    #     Y.append(np.array(res[output_columns]))
-    #
-    #     relevant_inputs = np.array(input_mat.query("runID == @runID")[input_columns])
-    #     relevant_inputs_repeated = np.vstack([relevant_inputs] * no_timepoints)
-    #
-    #     t_vec = np.array(res["t"])[..., np.newaxis]
-    #     x = np.hstack([t_vec, relevant_inputs_repeated])
-    #
-    #     X.append(x)
-    #     if len(X) > no_sims:
-    #         break
-    #
-    # X = np.vstack(X)
-    # Y = np.vstack(Y)
-    #
-    # if shuffle:
-    #     ix = np.random.permutation(X.shape[0])
-    #     X = X[ix, :]
-    #     Y = Y[ix, :]
-    #
-    # print("X, Y dimensions: ", X.shape, Y.shape)
-    return
-
-
+    return X, Y
 
 
 if __name__ == '__main__':
+    # -----------------case 1: test the sparse model-----------------
     # # load x
     # L_max = 500  # [um]
     # dL = 0.5  # [um]
@@ -260,7 +250,7 @@ if __name__ == '__main__':
     #                                                            dL,
     #                                                            error_threshold=0.001)
     # print('the final number of observation points is\n', n_ob_points)
-    main(save_name='InputMat_231015_2234', valid_lower_bound=0.001, valid_upper_bound=0.999, input_n_ob_points=41,
+
+    # -----------------case 2: run the whole pipeline-----------------
+    main(save_name='InputMat_231021_0805', valid_lower_bound=0.001, valid_upper_bound=0.999, input_n_ob_points=41,
          output_n_ob_points=35, dL=0.5, error_threshold=0.01)
-
-
