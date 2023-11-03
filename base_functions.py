@@ -58,9 +58,13 @@ def error_func_relative(y_true, y_pred):
     :param y_pred: the predicted values
     :return: the relative root mean squared error
     """
-    e = np.abs(y_true - y_pred)
-    r_e = 1 - np.divide(e, y_true)
-    relative_error = np.sqrt(r_e)
+    # e = np.abs(y_true - y_pred)
+    # r_e = 1 - np.divide(e, y_true)
+    # relative_error = np.sqrt(r_e)
+    if type(y_true) != np.ndarray:
+        y_true = np.array(y_true)
+    # todo: if true values are zero, then the relative error is infinite
+    relative_error = np.mean(np.abs(y_true - y_pred) / y_true)
     return relative_error
 
 
