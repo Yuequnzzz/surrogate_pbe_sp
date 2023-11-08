@@ -178,8 +178,8 @@ def reformat_input_output(input_mat, output_mat, n_ob_input, n_ob_output, t_samp
     """
 
     input_columns = ['runID', 'T0', 'dT', 'dt', 'S0', 'sol_k0', 'sol_kT', 'growth_k0', 'growth_kS',
-                     'nuc_k0', 'nuc_kS', 'ini_mu0', 'width', 'middle'] + [f"ob_{x}" for x in range(n_ob_input)]
-    output_columns = ["c"] + [f"ob_{x}" for x in range(n_ob_output)]
+                     'nuc_k0', 'nuc_kS', 'ini_mu0'] + [f"ob_{x}" for x in range(n_ob_input)] + ['width', 'middle']
+    output_columns = ["c"] + [f"ob_{x}" for x in range(n_ob_output)] + ['width', 'middle']
 
     X, Y = [], []
     for runID, res in output_mat.items():
@@ -209,6 +209,7 @@ def reformat_input_output(input_mat, output_mat, n_ob_input, n_ob_output, t_samp
     print("X, Y dimensions: ", X.shape, Y.shape)
 
     return X, Y
+
 
 
 if __name__ == '__main__':

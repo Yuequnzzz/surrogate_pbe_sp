@@ -191,10 +191,10 @@ def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, out
     export_path = 'data/sparse_training_data/'
     export_name = f"{save_name}_input_{input_n_ob_points}_{output_n_ob_points}.csv"
     X_df = pd.DataFrame(X)
-    X_df.to_csv(export_path + export_name, index=False)
+    X_df.to_csv(export_path + export_name, index=True)
     export_name = f"{save_name}_output_{input_n_ob_points}_{output_n_ob_points}.csv"
     Y_df = pd.DataFrame(Y)
-    Y_df.to_csv(export_path + export_name, index=False)
+    Y_df.to_csv(export_path + export_name, index=True)
 
     return X, Y
 
@@ -219,52 +219,52 @@ def plot_sparse(dL, observe_points_id, observe_points, x, data, y_pred):
 
 
 if __name__ == '__main__':
-    # -----------------case 1: test the sparse model-----------------
-    # load x
-    L_max = 500  # [um]
-    dL = 0.5  # [um]
-    L_bounds = np.arange(0, L_max + dL, dL)  # [um]
-    L_mid = np.mean([L_bounds[:-1], L_bounds[1:]], axis=0)  # [um]
-    x = L_mid
+    # # -----------------case 1: test the sparse model-----------------
+    # # load x
+    # L_max = 500  # [um]
+    # dL = 0.5  # [um]
+    # L_bounds = np.arange(0, L_max + dL, dL)  # [um]
+    # L_mid = np.mean([L_bounds[:-1], L_bounds[1:]], axis=0)  # [um]
+    # x = L_mid
+    #
+    # # load cdf
+    # filepath = 'data/'
+    # file_name = 'PBEsolver_InputMat_231015_2234_runID0.csv'
+    # data = pd.read_csv(filepath + file_name)
+    # for i in data.columns:
+    #     if 'pop_bin' not in i:
+    #         data.drop(i, axis=1, inplace=True)
+    #
+    # # test the sparse model
+    # valid_lower_bound = 0.001
+    # valid_upper_bound = 0.999
+    # n_ob_points = 3
+    # dL = 0.5
+    # alert, observe_points, observe_points_id, middle_id, width, y_pred = sparse_model(data,
+    #                                                                                   valid_lower_bound,
+    #                                                                                   valid_upper_bound,
+    #                                                                                   n_ob_points,
+    #                                                                                   dL,
+    #                                                                                   error_threshold=0.0001)
+    #
+    # # plot the result
+    # plot_sparse(dL, observe_points_id, observe_points, x, data, y_pred)
+    #
+    # # find the optimal number of observation points
+    # while alert:
+    #     n_ob_points += 2
+    #     print('the number of observation points is\n', n_ob_points)
+    #     alert, observe_points, observe_points_id, middle_id, width, y_pred = sparse_model(data,
+    #                                                                                       valid_lower_bound,
+    #                                                                                       valid_upper_bound,
+    #                                                                                       n_ob_points,
+    #                                                                                       dL,
+    #                                                                                       error_threshold=0.0001)
+    # print('the final number of observation points is\n', n_ob_points)
+    #
+    # # plot the result
+    # plot_sparse(dL, observe_points_id, observe_points, x, data, y_pred)
 
-    # load cdf
-    filepath = 'data/'
-    file_name = 'PBEsolver_InputMat_231015_2234_runID0.csv'
-    data = pd.read_csv(filepath + file_name)
-    for i in data.columns:
-        if 'pop_bin' not in i:
-            data.drop(i, axis=1, inplace=True)
-
-    # test the sparse model
-    valid_lower_bound = 0.001
-    valid_upper_bound = 0.999
-    n_ob_points = 3
-    dL = 0.5
-    alert, observe_points, observe_points_id, middle_id, width, y_pred = sparse_model(data,
-                                                                                      valid_lower_bound,
-                                                                                      valid_upper_bound,
-                                                                                      n_ob_points,
-                                                                                      dL,
-                                                                                      error_threshold=0.0001)
-
-    # plot the result
-    plot_sparse(dL, observe_points_id, observe_points, x, data, y_pred)
-
-    # find the optimal number of observation points
-    while alert:
-        n_ob_points += 2
-        print('the number of observation points is\n', n_ob_points)
-        alert, observe_points, observe_points_id, middle_id, width, y_pred = sparse_model(data,
-                                                                                          valid_lower_bound,
-                                                                                          valid_upper_bound,
-                                                                                          n_ob_points,
-                                                                                          dL,
-                                                                                          error_threshold=0.0001)
-    print('the final number of observation points is\n', n_ob_points)
-
-    # plot the result
-    plot_sparse(dL, observe_points_id, observe_points, x, data, y_pred)
-
-    # # -----------------case 2: run the whole pipeline-----------------
-    # main(save_name='InputMat_231021_0805', valid_lower_bound=0.001, valid_upper_bound=0.999, input_n_ob_points=41,
-    #      output_n_ob_points=35, dL=0.5, error_threshold=0.01)
+    # -----------------case 2: run the whole pipeline-----------------
+    main(save_name='InputMat_231021_0805', valid_lower_bound=0.001, valid_upper_bound=0.999, input_n_ob_points=41,
+         output_n_ob_points=35, dL=0.5, error_threshold=0.01)
