@@ -19,14 +19,14 @@ def load_data(save_name):
         Tuple: Input matrix for PBE solver, PBE solver results
     """    
     # Input 
-    input_mat = pd.read_csv(f"PBEsolver_InputMatrix/{save_name}.csv")
+    input_mat = pd.read_csv(f"D:/PycharmProjects/surrogatepbe/PBEsolver_InputMatrix//{save_name}.csv")
     print("Input matrix shape: ", input_mat.shape)
 
     # Output
     results = {}
     for runID in input_mat["runID"]:
         try:
-            results[runID] = pd.read_csv(f"PBEsolver_outputs/PBEsolver_{save_name}_runID{int(runID)}.csv")
+            results[runID] = pd.read_csv(f"D:/PycharmProjects/surrogatepbe/PBEsolver_outputs/PBEsolver_{save_name}_runID{int(runID)}.csv")
         except:
             pass
     print("PBE output files found: ", len(results))
@@ -145,7 +145,6 @@ def train_test_NN(X, Y, nodes_per_layer, layers, kFoldFlag=False, n_splits=5, sa
     errors = {"RMSE_tot":[], "RMSE_c":[], "mu0":[], "mu0_rel":[], "mu3":[], "mu3_rel":[], "av_len":[]}
     y_ests = []
     for k, (train_ix, test_ix) in enumerate(kf.split(X)):
-        print(k)
         mlpr = MLPRegressor(
             hidden_layer_sizes=([nodes_per_layer] * layers),
             alpha=0
@@ -219,17 +218,19 @@ def test_hyperparameters(nodes, layers, save_name = f"hyperparamOpt_{dt.now().st
                 results[col+"_std"].append(errors[col].std())
     results = pd.DataFrame(results)
     print(results)
-    results.to_csv(f"Predictions/{save_name}.csv")
+    results.to_csv(f"data/Prediction_hyperparameter/{save_name}.csv")
     return results
 
 
-def train_predict_performance_NN(X, Y, nodes_per_layer, no_layers, dL, test_ratio=0.1):
+def train_predict_performance_NN(X, Y, nodes_per_layer, no_layers, dL, encoded, test_ratio=0.1):
     """
     Train and test a single neural network with specific hyperparameters
     X: input array
     Y: output array
     nodes_per_layer: number of nodes per layer
     no_layers: number of layers
+    dL: the interval of the bins
+    encoded: binary, whether the data is encoded
     test_ratio : the fraction of test data
 
     Returns:
@@ -275,47 +276,76 @@ def train_predict_performance_NN(X, Y, nodes_per_layer, no_layers, dL, test_rati
     errors = pd.DataFrame(errors, index=[0])
     print(errors)
 
-    # get the observation locations
-    test_middle = Y_test[:, -1]
-    test_width = Y_test[:, -2]
-    n_ob_test = Y_test.shape[1] - 3  # exclude c, width, middle
-    # center around test_middle, generate 1/2*(n_ob_test-1) evenly spaced points, with interval test_width
-    x_test_left = -test_width / 2 * (n_ob_test - 1) + test_middle * dL
-    x_test_right = test_width / 2 * (n_ob_test - 1) + test_middle * dL
-    x_test_loc = np.linspace(x_test_left, x_test_right, n_ob_test).T
+    if encoded:
+        # get the observation locations
+        test_middle = Y_test[:, -1]
+        test_width = Y_test[:, -2]
+        n_ob_test = Y_test.shape[1] - 3  # exclude c, width, middle
+        # center around test_middle, generate 1/2*(n_ob_test-1) evenly spaced points, with interval test_width
+        x_test_left = -test_width / 2 * (n_ob_test - 1) + test_middle * dL
+        x_test_right = test_width / 2 * (n_ob_test - 1) + test_middle * dL
+        x_test_loc = np.linspace(x_test_left, x_test_right, n_ob_test).T
 
-    # get the observation locations for prediction
-    pre_middle = y_pre[:, -1]
-    pre_width = y_pre[:, -2]
-    n_ob_pre = y_pre.shape[1] - 3  # exclude c, width, middle
-    x_pre_left = -pre_width / 2 * (n_ob_pre - 1) + pre_middle * dL
-    x_pre_right = pre_width / 2 * (n_ob_pre - 1) + pre_middle * dL
-    x_pre_loc = np.linspace(x_pre_left, x_pre_right, n_ob_pre).T
+        # get the observation locations for prediction
+        pre_middle = y_pre[:, -1]
+        pre_width = y_pre[:, -2]
+        n_ob_pre = y_pre.shape[1] - 3  # exclude c, width, middle
+        x_pre_left = -pre_width / 2 * (n_ob_pre - 1) + pre_middle * dL
+        x_pre_right = pre_width / 2 * (n_ob_pre - 1) + pre_middle * dL
+        x_pre_loc = np.linspace(x_pre_left, x_pre_right, n_ob_pre).T
 
-    # Plot the result
-    # the distribution
-    plt.figure(figsize=(6, 8))
-    plt.subplot(3, 1, 1)
-    plt.xlim((0, 500))
-    plt.plot(x_test_loc[0, :], Y_test[0, 1:-2], label="case_one", color="b")
-    plt.plot(x_pre_loc[0, :], y_pre[0, 1:-2], label="case_one_pred", color="g")
-    plt.legend()
-    plt.ylabel(r"PSD $f$ [m$^{-3}\mu$m$^{-1}$]")
+        # Plot the result
+        plt.figure(figsize=(6, 8))
+        # in the title, include the number of nodes per layer and the number of layers
+        plt.suptitle(f"nodes_per_layer = {nodes_per_layer}, layers = {no_layers}")
+        # the distribution
+        plt.subplot(3, 1, 1)
+        plt.xlim((0, 500))
+        plt.plot(x_test_loc[0, :], Y_test[0, 1:-2], label="case_one", color="b")
+        plt.plot(x_pre_loc[0, :], y_pre[0, 1:-2], label="case_one_pred", color="g")
+        plt.legend()
+        plt.ylabel(r"PSD $f$ [m$^{-3}\mu$m$^{-1}$]")
 
-    plt.subplot(3, 1, 2)
-    plt.xlim((0, 500))
-    plt.plot(x_test_loc[-1, :], Y_test[-1, 1:-2], label="case_two", color="r")
-    plt.plot(x_pre_loc[-1, :], y_pre[-1, 1:-2], label="case_two_pred", color="g", ls="--")
-    plt.legend()
+        plt.subplot(3, 1, 2)
+        plt.xlim((0, 500))
+        plt.plot(x_test_loc[-1, :], Y_test[-1, 1:-2], label="case_two", color="r")
+        plt.plot(x_pre_loc[-1, :], y_pre[-1, 1:-2], label="case_two_pred", color="g")
+        plt.legend()
 
-    # the concentration through the whole process
-    plt.subplot(3, 1, 3)
-    plt.scatter(X_test[0, 0], Y_test[0, 0], label='true_concentration', color='r')
-    plt.scatter(X_test[0, 0], y_pre[0, 0], label='pred_concentration', color='g')
-    plt.xlabel(r'')
-    plt.ylabel(r"Concentration")
-    plt.legend()
-    plt.show()
+        # the concentration through the whole process
+        plt.subplot(3, 1, 3)
+        plt.scatter(X_test[0, 0], Y_test[0, 0], label='true_concentration', color='r')
+        plt.scatter(X_test[0, 0], y_pre[0, 0], label='pred_concentration', color='g')
+        plt.xlabel(r'')
+        plt.ylabel(r"Concentration")
+        plt.legend()
+
+        # save the plot
+        # plt.savefig(f"data/Prediction_hyperparameter/fig/Encoded_figure_{dt.now().strftime('%y%m%d_%H%M')}_{nodes_per_layer}_{no_layers}.png")
+        # show the plot
+        plt.show()
+
+    else:
+        # plot the unencoded result
+        # load x
+        L_max = 500  # [um]  # todo: be more general
+        L_bounds = np.arange(0, L_max + dL, dL)  # [um]
+        L_mid = np.mean([L_bounds[:-1], L_bounds[1:]], axis=0)  # [um]
+        x = L_mid
+
+        plt.figure(figsize=(6, 8))
+        plt.subplot(2, 1, 1)
+        plt.xlim((0, 500))
+        plt.plot(x, Y_test[0, 1:], label="case_one", color="r")
+        plt.plot(x, y_pre[0, 1:], label="case_one_pred", color="g", ls="--")
+        plt.legend()
+
+        plt.subplot(2, 1, 2)
+        plt.xlim((0, 500))
+        plt.plot(x, Y_test[-1, 1:], label="case_two", color="r")
+        plt.plot(x, y_pre[-1, 1:], label="case_two_pred", color="g", ls="--")
+        plt.legend()
+        plt.show()
 
     return
 
@@ -323,32 +353,40 @@ def train_predict_performance_NN(X, Y, nodes_per_layer, no_layers, dL, test_rati
 if __name__ == "__main__":
     kFoldFlag = False
 
-    # # save_name = "InputMat_231018_1624"  # small case
-    # save_name = "InputMat_231021_0805"  # large case
-    # input_mat, results = load_data(save_name)
-    #
-    # X,Y = reformat_input_output(input_mat, results)
+    encoded = False
+    dL = 0.5
+    test_ratio = 0.1
 
-    import_file_input = 'D:/PycharmProjects/GMM/data/sparse_training_data/InputMat_231021_0805_input_41_35.csv'
-    import_file_output = 'D:/PycharmProjects/GMM/data/sparse_training_data/InputMat_231021_0805_output_41_35.csv'
-    X = pd.read_csv(import_file_input, index_col=0)
-    Y = pd.read_csv(import_file_output, index_col=0)
+    if encoded:
+        # load the encoded data
+        import_file_input = 'D:/PycharmProjects/GMM/data/sparse_training_data/InputMat_231108_1637_input_41_41.csv'
+        import_file_output = 'D:/PycharmProjects/GMM/data/sparse_training_data/InputMat_231108_1637_output_41_41.csv'
+        X = pd.read_csv(import_file_input, index_col=0)
+        Y = pd.read_csv(import_file_output, index_col=0)
+        # convert to numpy array
+        X = X.to_numpy()
+        Y = Y.to_numpy()
 
+    else:
+        # save_name = "InputMat_231018_1624"  # small case
+        save_name = "InputMat_231108_1637"  # small case with only temperature varying
+        # save_name = "InputMat_231021_0805"  # large case
+        input_mat, results = load_data(save_name)
+        X, Y = reformat_input_output(input_mat, results)
 
-    # convert to numpy array
-    X = X.to_numpy()
-    Y = Y.to_numpy()
+    # Hyperparameter optimization
+    nodes_per_layer_set = [5, 10, 20, 50, 100]
+    layers_set = [2, 4, 6, 8, 10]
+    results = test_hyperparameters(nodes_per_layer_set, layers_set)
+    print(results)
 
-    # # Train single model
-    # print('start training')
-    # errors, training_time, predict_time, mlpr = train_test_NN(X, Y, nodes_per_layer = 100, layers = 10, kFoldFlag=True, n_splits=5, saveFlag=True)
-    # print("Training time: ", np.mean(training_time))
-    #
-    # # Hyperparameter optimization
-    # results = test_hyperparameters([5, 10, 20, 50, 100], [2, 4, 6, 8, 10])
-    # print(results)
+    # select the best hyperparameters with the minimum RMSE_tot_mean
+    nodes_per_layer_best = results.loc[results['RMSE_tot_mean'].idxmin(), 'nodes']
+    layers_best = results.loc[results['RMSE_tot_mean'].idxmin(), 'layers']
+    print('the best nodes_per_layer is: ', nodes_per_layer_best)
+    print('the best layers is: ', layers_best)
 
-    # Train and test model with specific hyperparameters
-    nodes_per_layer = 10
-    layers = 10
-    train_predict_performance_NN(X, Y, nodes_per_layer, layers, dL=0.5, test_ratio=0.1)
+    # iterate through all the hyperparameters and plot
+    for j in nodes_per_layer_set:
+        for k in layers_set:
+            train_predict_performance_NN(X, Y, j, k, dL=dL, encoded=encoded, test_ratio=test_ratio)

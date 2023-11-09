@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 import copy
-from base_functions import psd_2_pdf, cdf_func, error_func_scaled, error_functions, error_func_relative, \
+from base_functions import psd_2_pdf, pdf_2_psd, cdf_func, error_func_scaled, error_functions, error_func_relative, \
     reformat_input_output
 import matplotlib.pyplot as plt
 
@@ -115,18 +115,19 @@ def error_extrapolate(data_pdf, y_pre):
 
 def sparse_model(data_bins, valid_lower_bound, valid_upper_bound, n_ob_points, dL, error_threshold=0.01):
     # get the pdf and cdf
-    pdf_data = psd_2_pdf(data_bins)
+    total_num, pdf_data = psd_2_pdf(data_bins)
     cdf_data = cdf_func(pdf_data)
+    psd_data = pdf_2_psd(pdf_data, total_num)
     # search for the valid region
     start, middle, end = search_for_valid_region(cdf_data, valid_lower_bound, valid_upper_bound)
     # place the observation points
     ob_points_id, middle_id, width = place_ob_points(start, end, n_ob_points, dL)
-    # get the real probability of the observation points
-    ob_prob = real_prob_ob(pdf_data, ob_points_id)
+    # get the real particle distribution of the observation points
+    ob_prob = real_prob_ob(psd_data, ob_points_id)
     # predict the pdf
-    y_pre = predict_pdf_extrapolate(pdf_data, ob_points_id, ob_prob)
+    y_pre = predict_pdf_extrapolate(psd_data, ob_points_id, ob_prob)
     # calculate the error
-    error = error_extrapolate(pdf_data, y_pre)
+    error = error_extrapolate(psd_data, y_pre)
     if np.all(error < error_threshold):
         print('the fitting performance is good')
         alert = False
@@ -141,7 +142,8 @@ def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, out
          error_threshold=0.01):
     # load the data
     # input matrix
-    file_path_in = 'data/PBE_inputMatrix/'
+    # file_path_in = 'data/PBE_inputMatrix/'
+    file_path_in = 'D:/PycharmProjects/surrogatepbe/PBEsolver_InputMatrix/'
     data_input = pd.read_csv(file_path_in + f"{save_name}.csv")
     data_input_original = data_input.copy(deep=True)
     for i in data_input.columns:
@@ -149,7 +151,8 @@ def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, out
             data_input.drop(i, axis=1, inplace=True)
 
     # output matrix
-    file_path_out = 'data/PBE_outputs/'
+    # file_path_out = 'data/PBE_outputs/'
+    file_path_out = 'D:/PycharmProjects/surrogatepbe/PBEsolver_outputs/'
     results = {}
     data_output_original = {}
     for runID in data_input_original["runID"]:
@@ -266,5 +269,5 @@ if __name__ == '__main__':
     # plot_sparse(dL, observe_points_id, observe_points, x, data, y_pred)
 
     # -----------------case 2: run the whole pipeline-----------------
-    main(save_name='InputMat_231021_0805', valid_lower_bound=0.001, valid_upper_bound=0.999, input_n_ob_points=41,
-         output_n_ob_points=35, dL=0.5, error_threshold=0.01)
+    main(save_name='InputMat_231108_1637', valid_lower_bound=0.001, valid_upper_bound=0.999, input_n_ob_points=41,
+         output_n_ob_points=41, dL=0.5, error_threshold=0.01)

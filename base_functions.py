@@ -146,7 +146,19 @@ def psd_2_pdf(data):
     for i in range(pdf.shape[0]):
         if abs(sum(pdf.iloc[i, :]) - 1) > 0.0001:
             raise ValueError('The sum of each row is not 1')
-    return pdf
+    return total_num, pdf
+
+
+def pdf_2_psd(pdf, total_number):
+    """
+    transform the pdf into psd
+    :param pdf: the pdf of the whole data # todo: consider the case where the pdf is a vector
+    :param total_number: the total number of crystals
+    :return: the psd
+    """
+    # calculate the psd
+    psd = pdf * total_number
+    return psd
 
 
 def cdf_func(pdf_data):
@@ -220,7 +232,7 @@ if __name__ == '__main__':
         if 'pop_bin' not in i:
             data.drop(i, axis=1, inplace=True)
     # get the pdf
-    pdf = psd_2_pdf(data)
+    total_number, pdf = psd_2_pdf(data)
     print(pdf)
     # get the cdf
     cdf = cdf_func(pdf)
