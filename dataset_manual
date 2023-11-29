@@ -1,0 +1,99 @@
+
+
+There are many versions of data of different sizes and settings. The data is available in the following formats:
+
+
+The pipeline is as follows:
+- Set the parameters in the surrogatepbe/Input_Matrix_PBES.py and surrogatepbe/PBEsolver_promoter.py
+- Run the surrogatepbe/PBEsolver_promoter.py
+- Change the save_name in GMM/sparse_preprocessing.py and run to generate the encoded data
+- Change the save_name in GMM/train_NN.py
+- Run GMM/train_NN.py to train the neural network and output the results
+
+
+save_name: InputMat_231108_1637 (hyperparamOpt_231109_1431.csv)
+description: 10 simulations, 2639 rows, only vary the temperature profile
+details:
+    number of observation points  = 41 (for both input and output)
+    t_end = 500
+    dL = 0.5
+    L_max = 500
+    bounds = {"T0": [25, 50], "dT": [5, 25], "dt": [10, 8 * 60], "S0": [1.5, 1.500001], "sol_k0": [0.099999999, 1e-1],
+                  "sol_kT": [0.009999999, 1e-2], "growth_k0": [0.999999999, 1], "growth_kS": [1.9999999999, 2], "nuc_k0": [0, 0.0000001],
+                  "nuc_kS": [1, 1.000000001], "mu": [30, 30.0000001], "sigma": [10, 10.00000001], "skewness": [0, 0.00000001], "modality": [1, 1.00000001],
+                  "distance": [10, 10.00000001], "ini_mu0": [100, 100.00000001]}
+    sim_amount = 10
+
+
+save_name: InputMat_231109_1543 (hyperparamOpt_231109_1606.csv)
+description: 10 simulations, 1488 rows, vary all the parameters
+details:
+    number of observation points  = 41 (for both input and output)
+    t_end = 5000
+    dL = 0.5
+    L_max = 500
+    bounds = {"T0": [25, 50], "dT": [5, 25], "dt" : [10*60, 60*60], "S0" : [1.05, 1.5], "sol_k0": [1e-4, 1e-1],
+              "sol_kT": [1e-4, 1e-2], "growth_k0": [1e-8,1], "growth_kS": [1,2], "nuc_k0": [1e-8,1], "nuc_kS": [1,2],
+              "mu": [30, 100], "sigma": [10, 50], "skewness": [-10, 10], "modality": [1,4], "distance": [10, 50],
+              "ini_mu0": [100,5000]}
+    sim_amount = 10
+
+
+save_name: InputMat_231110_0720 (hyperparamOpt_231110_0858.csv)
+description: 300 simulations, vary all the parameters
+details:
+    number of observation points = 41 (for both input and output)
+    t_end = 5000
+    dL = 0.5
+    L_max = 500
+        bounds = {"T0": [25, 50], "dT": [5, 25], "dt" : [10*60, 60*60], "S0" : [1.05, 1.5], "sol_k0": [1e-4, 1e-1],
+              "sol_kT": [1e-4, 1e-2], "growth_k0": [1e-8,1], "growth_kS": [1,2], "nuc_k0": [1e-8,1], "nuc_kS": [1,2],
+              "mu": [30, 100], "sigma": [10, 50], "skewness": [-10, 10], "modality": [1,4], "distance": [10, 50],
+              "ini_mu0": [100,5000]}
+    sim_amount = 300
+
+
+save_name: InputMat_231110_1058 (hyperparamOpt_231110_1109.csv)
+description: 10 simulations, keep the parameters regarding growth, nucleation and solubility constant
+details:
+    number of observation points = 41 (for both input and output)
+    t_end = 5000
+    dL = 0.5
+    L_max = 500
+    bounds = {"T0": [25, 50], "dT": [5, 25], "dt": [10, 8 * 60], "S0": [1.05, 1.5], "sol_k0": [0.099999999, 1e-1],
+              "sol_kT": [0.009999999, 1e-2], "growth_k0": [0.999999999, 1], "growth_kS": [1.9999999999, 2], "nuc_k0": [0, 0.0000001],
+              "nuc_kS": [1, 1.000000001], "mu": [30, 100], "sigma": [10, 50], "skewness": [-10, 10], "modality": [1, 4],
+              "distance": [10, 50], "ini_mu0": [100, 5000]}
+    sim_amount = 10
+
+
+save_name: InputMat_231110_1125 (problematic)
+description: 10 simulations, only vary the distribution
+details:
+    number of observation points = 41 (for both input and output)
+    t_end = 5000
+    dL = 0.5
+    L_max = 500
+    bounds = {"T0": [25, 25.0000001], "dT": [5, 5.00000001], "dt": [100, 100.0000001], "S0": [1.5, 1.50000001],
+              "sol_k0": [0.099999999, 1e-1], "sol_kT": [0.009999999, 1e-2], "growth_k0": [0.999999999, 1],
+              "growth_kS": [1.9999999999, 2], "nuc_k0": [0, 0.0000001], "nuc_kS": [1, 1.000000001],
+              "mu": [30, 100], "sigma": [10, 50], "skewness": [-10, 10], "modality": [1, 4],
+              "distance": [10, 50], "ini_mu0": [100, 100.000001]}
+    sim_amount = 10
+
+
+save_name: InputMat_231111_2012 (hyperparamOpt_231110_1109.csv)
+description: 300 simulations, keep the parameters regarding growth, nucleation and solubility constant
+details:
+    number of observation points = 41 (for both input and output)
+    t_end = 5000
+    dL = 0.5
+    L_max = 500
+    bounds = {"T0": [25, 50], "dT": [5, 25], "dt": [10, 8 * 60], "S0": [1.05, 1.5], "sol_k0": [0.099999999, 1e-1],
+              "sol_kT": [0.009999999, 1e-2], "growth_k0": [0.999999999, 1], "growth_kS": [1.9999999999, 2], "nuc_k0": [0, 0.0000001],
+              "nuc_kS": [1, 1.000000001], "mu": [30, 100], "sigma": [10, 50], "skewness": [-10, 10], "modality": [1, 4],
+              "distance": [10, 50], "ini_mu0": [100, 5000]}
+    sim_amount = 300
+
+
+

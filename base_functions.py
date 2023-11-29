@@ -51,21 +51,36 @@ def error_func_scaled(y_true, y_pred):
     return s_rmse
 
 
-def error_func_relative(y_true, y_pred):
+def error_func_smape(y_true, y_pred):
     """
-    calculate the relative error functions
+    calculate the Symmetric Mean Absolute Percentage Error
     :param y_true: the true values
     :param y_pred: the predicted values
     :return: the relative root mean squared error
     """
-    # e = np.abs(y_true - y_pred)
-    # r_e = 1 - np.divide(e, y_true)
-    # relative_error = np.sqrt(r_e)
     if type(y_true) != np.ndarray:
-        y_true = np.array(y_true)
-    # todo: if true values are zero, then the relative error is infinite
-    relative_error = np.mean(np.abs(y_true - y_pred) / y_true)
-    return relative_error
+        y_true = np.array(y_true).reshape(-1, 1)
+    # numerator = np.abs(y_true - y_pred)
+    # denominator = 0.5 * np.abs(y_true) + 0.5 * np.abs(y_pred)
+
+    # note that if using the relative error, the result can be 1) a value between 0 and 1, 2) infinite, where the
+    # numerator is non-zero and the denominator is zero, 3) nan, where both the numerator and denominator are zero
+    # but for our smape, it can be divided into two cases: (a) the denominator is zero when the true value and the
+    # prediction is zero at the same time; (b) the denominator is non-zero when either the true value or the
+    # prediction is non-zero, which results in a value between 0 and 1
+    # but for the first case, we can set the error to be zero since y_true = y_pred = 0
+    # the other issue is for those very small y_trues, the denominator can be very small, which results in a very large
+
+    # calculate the error
+    error_vector = np.abs(y_true - y_pred) / (0.5 * np.abs(y_true) + 0.5 * np.abs(y_pred))
+    # try to replace those true values that are very small (smaller than 0.01) with zero in the error
+    error_vector[np.where(y_true < 0.1)] = 0
+    # calculate the mean of the error
+    error_smape = np.mean(error_vector) * 100
+
+    # try to fill the nan with 0
+    error_smape = np.nan_to_num(error_smape)
+    return error_smape
 
 
 def error_gmm(y_true, x, mu, sigma, weights):
@@ -221,7 +236,6 @@ def reformat_input_output(input_mat, output_mat, n_ob_input, n_ob_output, t_samp
     print("X, Y dimensions: ", X.shape, Y.shape)
 
     return X, Y
-
 
 
 if __name__ == '__main__':

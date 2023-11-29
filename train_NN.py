@@ -52,7 +52,7 @@ def reformat_input_output(input_mat, results, t_sample_frac = 0.25, no_sims=5000
 
     X, Y = [], []
     for runID, res in results.items():
-        res = res.sample(frac=t_sample_frac)
+        # res = res.sample(frac=t_sample_frac)
 
         no_timepoints = res.shape[0]
         Y.append(np.array(res[output_columns]))
@@ -193,7 +193,7 @@ def train_test_NN(X, Y, nodes_per_layer, layers, kFoldFlag=False, n_splits=5, sa
     return errors, training_time, predict_time, mlpr
 
 
-def test_hyperparameters(nodes, layers, save_name = f"hyperparamOpt_{dt.now().strftime('%y%m%d_%H%M')}"):
+def test_hyperparameters(nodes, layers, encoding, save_name = f"hyperparamOpt_{dt.now().strftime('%y%m%d_%H%M')}"):
     """Test a combination of different number of nodes per layer and layers
 
     Args:
@@ -218,7 +218,10 @@ def test_hyperparameters(nodes, layers, save_name = f"hyperparamOpt_{dt.now().st
                 results[col+"_std"].append(errors[col].std())
     results = pd.DataFrame(results)
     print(results)
-    results.to_csv(f"data/Prediction_hyperparameter/{save_name}.csv")
+    if encoding:
+        results.to_csv(f"data/Prediction_hyperparameter/{save_name}.csv")
+    else:
+        results.to_csv(f"data/Prediction_hyperparameter/{save_name}_unencoded.csv")
     return results
 
 
@@ -236,6 +239,8 @@ def train_predict_performance_NN(X, Y, nodes_per_layer, no_layers, dL, encoded, 
     Returns:
 
     """
+    print('nodes_per_layer = ', nodes_per_layer, 'no_layers = ', no_layers)
+
     # find the number of unique runID
     n_runID = np.unique(X[:, 1]).shape[0]
     # based on test_ratio, split into training and testing data
@@ -295,30 +300,31 @@ def train_predict_performance_NN(X, Y, nodes_per_layer, no_layers, dL, encoded, 
         x_pre_loc = np.linspace(x_pre_left, x_pre_right, n_ob_pre).T
 
         # Plot the result
-        plt.figure(figsize=(6, 8))
+        plt.figure(figsize=(8, 6))
         # in the title, include the number of nodes per layer and the number of layers
-        plt.suptitle(f"nodes_per_layer = {nodes_per_layer}, layers = {no_layers}")
+        # plt.suptitle(f"nodes_per_layer = {nodes_per_layer}, layers = {no_layers}")
         # the distribution
-        plt.subplot(3, 1, 1)
+        # plt.subplot(3, 1, 1)
         plt.xlim((0, 500))
-        plt.plot(x_test_loc[0, :], Y_test[0, 1:-2], label="case_one", color="b")
-        plt.plot(x_pre_loc[0, :], y_pre[0, 1:-2], label="case_one_pred", color="g")
-        plt.legend()
-        plt.ylabel(r"PSD $f$ [m$^{-3}\mu$m$^{-1}$]")
+        plt.plot(x_test_loc[0, :], Y_test[0, 1:-2], label="solver", color="b")
+        plt.plot(x_pre_loc[0, :], y_pre[0, 1:-2], label="surrogate", color="g", ls="--")
+        plt.legend(prop={'size': 25})
+        # plt.ylabel(r"PSD $f$ [m$^{-3}\mu$m$^{-1}$]")
+        # plt.xlabel(r"size $L$ [um]")
 
-        plt.subplot(3, 1, 2)
-        plt.xlim((0, 500))
-        plt.plot(x_test_loc[-1, :], Y_test[-1, 1:-2], label="case_two", color="r")
-        plt.plot(x_pre_loc[-1, :], y_pre[-1, 1:-2], label="case_two_pred", color="g")
-        plt.legend()
-
-        # the concentration through the whole process
-        plt.subplot(3, 1, 3)
-        plt.scatter(X_test[0, 0], Y_test[0, 0], label='true_concentration', color='r')
-        plt.scatter(X_test[0, 0], y_pre[0, 0], label='pred_concentration', color='g')
-        plt.xlabel(r'')
-        plt.ylabel(r"Concentration")
-        plt.legend()
+        # plt.subplot(3, 1, 2)
+        # plt.xlim((0, 500))
+        # plt.plot(x_test_loc[-1, :], Y_test[-1, 1:-2], label="case_two", color="r")
+        # plt.plot(x_pre_loc[-1, :], y_pre[-1, 1:-2], label="case_two_pred", color="g")
+        # plt.legend()
+        #
+        # # the concentration through the whole process
+        # plt.subplot(3, 1, 3)
+        # plt.scatter(X_test[0, 0], Y_test[0, 0], label='true_concentration', color='r')
+        # plt.scatter(X_test[0, 0], y_pre[0, 0], label='pred_concentration', color='g')
+        # plt.xlabel(r'')
+        # plt.ylabel(r"Concentration")
+        # plt.legend()
 
         # save the plot
         # plt.savefig(f"data/Prediction_hyperparameter/fig/Encoded_figure_{dt.now().strftime('%y%m%d_%H%M')}_{nodes_per_layer}_{no_layers}.png")
@@ -333,18 +339,20 @@ def train_predict_performance_NN(X, Y, nodes_per_layer, no_layers, dL, encoded, 
         L_mid = np.mean([L_bounds[:-1], L_bounds[1:]], axis=0)  # [um]
         x = L_mid
 
-        plt.figure(figsize=(6, 8))
-        plt.subplot(2, 1, 1)
+        plt.figure(figsize=(8, 6))
+        # plt.subplot(2, 1, 1)
         plt.xlim((0, 500))
-        plt.plot(x, Y_test[0, 1:], label="case_one", color="r")
-        plt.plot(x, y_pre[0, 1:], label="case_one_pred", color="g", ls="--")
-        plt.legend()
+        plt.plot(x, Y_test[20, 1:], label='solver', color="r")
+        plt.plot(x, y_pre[20, 1:], label="surrogate", color="g", ls="--")
+        # plt.ylabel(r"PSD $f$ [m$^{-3}\mu$m$^{-1}$]")
+        # plt.xlabel(r"size $L$ [um]")
+        plt.legend(prop={'size': 25})
 
-        plt.subplot(2, 1, 2)
-        plt.xlim((0, 500))
-        plt.plot(x, Y_test[-1, 1:], label="case_two", color="r")
-        plt.plot(x, y_pre[-1, 1:], label="case_two_pred", color="g", ls="--")
-        plt.legend()
+        # plt.subplot(2, 1, 2)
+        # plt.xlim((0, 500))
+        # plt.plot(x, Y_test[-1, 1:], label="case_two", color="r")
+        # plt.plot(x, y_pre[-1, 1:], label="case_two_pred", color="g", ls="--")
+        # plt.legend()
         plt.show()
 
     return
@@ -356,11 +364,21 @@ if __name__ == "__main__":
     encoded = False
     dL = 0.5
     test_ratio = 0.1
+    save_name = "InputMat_231108_1637"  # small case (10) with only temperature varying, gaussian like
+    # save_name = "InputMat_231122_0934"  # large case(100) with only temperature varying, gaussian like
+    # save_name = "InputMat_231110_1058"  # small case (10) with parameters regarding growth and nucleation constant
+    # save_name = "InputMat_231110_1125"  # problematic dataset(!) small case (10) with only distribution varying
+
+    # save_name = "InputMat_231109_1543"  # small case (10) with all varied
+
+    # save_name = "InputMat_231021_0805"  # large case (200)
+    # save_name = "InputMat_231110_0720"  # large case (300)
+    # save_name = "InputMat_231115_1455"  # large case (300) with all varied and t_end =500
 
     if encoded:
         # load the encoded data
-        import_file_input = 'D:/PycharmProjects/GMM/data/sparse_training_data/InputMat_231108_1637_input_41_41.csv'
-        import_file_output = 'D:/PycharmProjects/GMM/data/sparse_training_data/InputMat_231108_1637_output_41_41.csv'
+        import_file_input = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_input_41_41.csv'
+        import_file_output = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_output_41_41.csv'
         X = pd.read_csv(import_file_input, index_col=0)
         Y = pd.read_csv(import_file_output, index_col=0)
         # convert to numpy array
@@ -368,25 +386,23 @@ if __name__ == "__main__":
         Y = Y.to_numpy()
 
     else:
-        # save_name = "InputMat_231018_1624"  # small case
-        save_name = "InputMat_231108_1637"  # small case with only temperature varying
-        # save_name = "InputMat_231021_0805"  # large case
         input_mat, results = load_data(save_name)
         X, Y = reformat_input_output(input_mat, results)
 
     # Hyperparameter optimization
-    nodes_per_layer_set = [5, 10, 20, 50, 100]
-    layers_set = [2, 4, 6, 8, 10]
-    results = test_hyperparameters(nodes_per_layer_set, layers_set)
-    print(results)
-
-    # select the best hyperparameters with the minimum RMSE_tot_mean
-    nodes_per_layer_best = results.loc[results['RMSE_tot_mean'].idxmin(), 'nodes']
-    layers_best = results.loc[results['RMSE_tot_mean'].idxmin(), 'layers']
-    print('the best nodes_per_layer is: ', nodes_per_layer_best)
-    print('the best layers is: ', layers_best)
-
-    # iterate through all the hyperparameters and plot
+    nodes_per_layer_set = [50]  # [5, 10, 20, 50, 100]
+    layers_set = [8]  # [2, 4, 6, 8, 10]
+    # results = test_hyperparameters(nodes_per_layer_set, layers_set, encoding=encoded)
+    # print(results)
+    #
+    # # select the best hyperparameters with the minimum RMSE_tot_mean
+    # nodes_per_layer_best = results.loc[results['RMSE_tot_mean'].idxmin(), 'nodes']
+    # layers_best = results.loc[results['RMSE_tot_mean'].idxmin(), 'layers']
+    # print('the best nodes_per_layer is: ', nodes_per_layer_best)
+    # print('the best layers is: ', layers_best)
+    #
+    # # iterate through all the hyperparameters and plot
+    # print('plotting the results for all hyperparameters')
     for j in nodes_per_layer_set:
         for k in layers_set:
             train_predict_performance_NN(X, Y, j, k, dL=dL, encoded=encoded, test_ratio=test_ratio)

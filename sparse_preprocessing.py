@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 import copy
-from base_functions import psd_2_pdf, pdf_2_psd, cdf_func, error_func_scaled, error_functions, error_func_relative, \
+from base_functions import psd_2_pdf, pdf_2_psd, cdf_func, error_func_scaled, error_functions, error_func_smape, \
     reformat_input_output
 import matplotlib.pyplot as plt
 
@@ -106,14 +106,12 @@ def error_extrapolate(data_pdf, y_pre):
     # calculate the error
     for i in range(data_pdf.shape[0]):
         # error[i] = error_func_relative(np.asarray(data_pdf.iloc[i, :]), y_pre[i, :].reshape(-1, 1))
-        # todo: think of a better way to calculate the error
-        a = data_pdf.iloc[i, :]
-        b = y_pre[i, :].reshape(-1, 1)
-        error[i] = error_func_scaled(data_pdf.iloc[i, :], y_pre[i, :].reshape(-1, 1))
+        error[i] = error_func_smape(data_pdf.iloc[i, :], y_pre[i, :].reshape(-1, 1))
+        # print(f"the error of row {i} is {error[i]}")
     return error
 
 
-def sparse_model(data_bins, valid_lower_bound, valid_upper_bound, n_ob_points, dL, error_threshold=0.01):
+def sparse_model(data_bins, valid_lower_bound, valid_upper_bound, n_ob_points, dL, error_threshold=0.01, run_type=None):
     # get the pdf and cdf
     total_num, pdf_data = psd_2_pdf(data_bins)
     cdf_data = cdf_func(pdf_data)
@@ -128,14 +126,42 @@ def sparse_model(data_bins, valid_lower_bound, valid_upper_bound, n_ob_points, d
     y_pre = predict_pdf_extrapolate(psd_data, ob_points_id, ob_prob)
     # calculate the error
     error = error_extrapolate(psd_data, y_pre)
-    if np.all(error < error_threshold):
-        print('the fitting performance is good')
-        alert = False
+    # check type to decide whether run the following code
+    if run_type == 'optimal':
+        if np.all(error < error_threshold):
+            print('The sparse model is good enough')
+            # plot_sparse(0.5, ob_points_id, ob_prob, x, data_bins, y_pre)
+            alert = False
+        else:
+            print('More observation points are needed')
+            # plot_sparse(0.5, ob_points_id, ob_prob, x, data_bins, y_pre)
+            # signal the user to add more observation points
+            alert = True
     else:
-        print('More observation points are needed')
-        # signal the user to add more observation points
-        alert = True
+        alert = False
+
     return alert, ob_prob, ob_points_id, middle_id, width, y_pre
+
+
+def find_optimal_ob_points(data, valid_lower_bound, valid_upper_bound, n_points, dL, error_threshold=0.01):
+    """
+    find the optimal number of observation points
+    :param data:
+    :param valid_lower_bound:
+    :param valid_upper_bound:
+    :param n_points:
+    :param dL:
+    :param error_threshold:
+    :return:
+    """
+    alert = sparse_model(data, valid_lower_bound, valid_upper_bound, n_points, dL,
+                         error_threshold=error_threshold, run_type='optimal')[0]
+    while alert:
+        n_points += 2
+        alert = sparse_model(data, valid_lower_bound, valid_upper_bound, n_points, dL,
+                             error_threshold=error_threshold, run_type='optimal')[0]
+
+    return n_points
 
 
 def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, output_n_ob_points, dL,
@@ -167,9 +193,28 @@ def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, out
         except:
             pass
 
+    # find the optimal number of observation points for input matrix
+    input_n_ob_points = find_optimal_ob_points(data_input,
+                                               valid_lower_bound,
+                                               valid_upper_bound,
+                                               input_n_ob_points,
+                                               dL,
+                                               error_threshold=error_threshold)
+    print('the optimal number of observation points for input matrix is\n', input_n_ob_points)
+
+    # find the optimal number of observation points for output matrix
+    for k in results.keys():
+        output_n_ob_points = find_optimal_ob_points(results[k],
+                                                    valid_lower_bound,
+                                                    valid_upper_bound,
+                                                    output_n_ob_points,
+                                                    dL,
+                                                    error_threshold=error_threshold)
+    print('the optimal number of observation points for output matrix is\n', output_n_ob_points)
+
     # get the necessary observation info and combine it to previous info
     input_alert, input_observe_points, input_observe_points_id, input_middle_id, input_width, input_pred \
-        = sparse_model(data_input, valid_lower_bound, valid_upper_bound, input_n_ob_points, dL)
+        = sparse_model(data_input, valid_lower_bound, valid_upper_bound, input_n_ob_points, dL, error_threshold)
     input_ob_columns = [f"ob_{x}" for x in range(input_n_ob_points)] + ['width'] + ['middle']
     input_observe_df = pd.DataFrame(
         np.concatenate((input_observe_points, input_width.reshape(-1, 1), input_middle_id.reshape(-1, 1)), axis=1),
@@ -177,9 +222,13 @@ def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, out
     input_mat = pd.concat([data_input_original, input_observe_df], axis=1)
 
     output_mat = {}
+    unreliable_runID = []
     for k in results.keys():
         output_alert, output_observe_points, output_observe_points_id, output_middle_id, output_width, output_pred \
             = sparse_model(results[k], valid_lower_bound, valid_upper_bound, output_n_ob_points, dL)
+        # todo: some runs are not reliable since the distribution is out of the region
+        if output_alert:
+            unreliable_runID.append(k)
         output_ob_columns = [f"ob_{x}" for x in range(output_n_ob_points)] + ['width'] + ['middle']
         output_observe_df = pd.DataFrame(
             np.concatenate((output_observe_points, output_width.reshape(-1, 1), output_middle_id.reshape(-1, 1)),
@@ -191,15 +240,15 @@ def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, out
                                  no_sims=5000, shuffle=False)
 
     # save the data as csv file
-    export_path = 'data/sparse_training_data/'
-    export_name = f"{save_name}_input_{input_n_ob_points}_{output_n_ob_points}.csv"
-    X_df = pd.DataFrame(X)
-    X_df.to_csv(export_path + export_name, index=True)
-    export_name = f"{save_name}_output_{input_n_ob_points}_{output_n_ob_points}.csv"
-    Y_df = pd.DataFrame(Y)
-    Y_df.to_csv(export_path + export_name, index=True)
+    # export_path = 'data/sparse_training_data/'
+    # export_name = f"{save_name}_input_{input_n_ob_points}_{output_n_ob_points}.csv"
+    # X_df = pd.DataFrame(X)
+    # X_df.to_csv(export_path + export_name, index=True)
+    # export_name = f"{save_name}_output_{input_n_ob_points}_{output_n_ob_points}.csv"
+    # Y_df = pd.DataFrame(Y)
+    # Y_df.to_csv(export_path + export_name, index=True)
 
-    return X, Y
+    return X, Y, unreliable_runID
 
 
 def plot_sparse(dL, observe_points_id, observe_points, x, data, y_pred):
@@ -207,28 +256,31 @@ def plot_sparse(dL, observe_points_id, observe_points, x, data, y_pred):
     plt.figure(figsize=(6, 8))
     x_id_matrix = dL * observe_points_id
     plt.subplot(2, 1, 1)
-    plt.scatter(x_id_matrix[0, :], observe_points[0, :], label="start", color="b")
-    plt.plot(x, psd_2_pdf(data).iloc[0, :], label="start", color="b")
-    plt.plot(x, y_pred[0, :], label="start_pred", color="g")
-    plt.legend()
-    plt.ylabel(r"PSD $f$ [m$^{-3}\mu$m$^{-1}$]")
+    plt.scatter(x_id_matrix[0, :], observe_points[0, :], label="ob_points", color="r")
+    plt.plot(x, data.iloc[0, :], label="original", color="b")
+    plt.plot(x, y_pred[0, :], label="estimated", color="r")
+    plt.legend(prop={'size': 15})
+    # set the legend size
+    # plt.legend(prop={'size': 8})
+    # plt.ylabel(r"PSD $f$ [m$^{-3}\mu$m$^{-1}$]")
 
     plt.subplot(2, 1, 2)
-    plt.scatter(x_id_matrix[-1, :], observe_points[-1, :], label="end", color="r")
-    plt.plot(x, psd_2_pdf(data).iloc[-1, :], label="end", color="r")
-    plt.legend()
+    plt.scatter(x_id_matrix[-1, :], observe_points[-1, :], label="ob_points", color="r")
+    plt.plot(x, data.iloc[-1, :], label="original", color="b")
+    plt.plot(x, y_pred[-1, :], label="estimated", color="r")
+    plt.legend(prop={'size': 15})
 
     plt.show()
 
 
 if __name__ == '__main__':
     # # -----------------case 1: test the sparse model-----------------
-    # # load x
-    # L_max = 500  # [um]
-    # dL = 0.5  # [um]
-    # L_bounds = np.arange(0, L_max + dL, dL)  # [um]
-    # L_mid = np.mean([L_bounds[:-1], L_bounds[1:]], axis=0)  # [um]
-    # x = L_mid
+    # load x
+    L_max = 500  # [um]
+    dL = 0.5  # [um]
+    L_bounds = np.arange(0, L_max + dL, dL)  # [um]
+    L_mid = np.mean([L_bounds[:-1], L_bounds[1:]], axis=0)  # [um]
+    x = L_mid
     #
     # # load cdf
     # filepath = 'data/'
@@ -269,5 +321,10 @@ if __name__ == '__main__':
     # plot_sparse(dL, observe_points_id, observe_points, x, data, y_pred)
 
     # -----------------case 2: run the whole pipeline-----------------
-    main(save_name='InputMat_231108_1637', valid_lower_bound=0.001, valid_upper_bound=0.999, input_n_ob_points=41,
-         output_n_ob_points=41, dL=0.5, error_threshold=0.01)
+    X, Y, unreliable_runID = main(save_name='InputMat_231021_0805',
+                                  valid_lower_bound=0.001,
+                                  valid_upper_bound=0.999,
+                                  input_n_ob_points=41,
+                                  output_n_ob_points=47,
+                                  dL=0.5,
+                                  error_threshold=0.1)
