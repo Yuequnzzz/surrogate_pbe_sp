@@ -306,8 +306,8 @@ def train_predict_performance_NN(X, Y, nodes_per_layer, no_layers, dL, encoded, 
         # the distribution
         # plt.subplot(3, 1, 1)
         plt.xlim((0, 500))
-        plt.plot(x_test_loc[0, :], Y_test[0, 1:-2], label="solver", color="b")
-        plt.plot(x_pre_loc[0, :], y_pre[0, 1:-2], label="surrogate", color="g", ls="--")
+        plt.plot(x_test_loc[11, :], Y_test[11, 1:-2], label="solver", color="b")
+        plt.plot(x_pre_loc[11, :], y_pre[11, 1:-2], label="surrogate", color="g", ls="--")
         plt.legend(prop={'size': 25})
         # plt.ylabel(r"PSD $f$ [m$^{-3}\mu$m$^{-1}$]")
         # plt.xlabel(r"size $L$ [um]")
@@ -361,10 +361,10 @@ def train_predict_performance_NN(X, Y, nodes_per_layer, no_layers, dL, encoded, 
 if __name__ == "__main__":
     kFoldFlag = False
 
-    encoded = False
+    encoded = True
     dL = 0.5
     test_ratio = 0.1
-    save_name = "InputMat_231108_1637"  # small case (10) with only temperature varying, gaussian like
+    # save_name = "InputMat_231108_1637"  # small case (10) with only temperature varying, gaussian like
     # save_name = "InputMat_231122_0934"  # large case(100) with only temperature varying, gaussian like
     # save_name = "InputMat_231110_1058"  # small case (10) with parameters regarding growth and nucleation constant
     # save_name = "InputMat_231110_1125"  # problematic dataset(!) small case (10) with only distribution varying
@@ -374,11 +374,12 @@ if __name__ == "__main__":
     # save_name = "InputMat_231021_0805"  # large case (200)
     # save_name = "InputMat_231110_0720"  # large case (300)
     # save_name = "InputMat_231115_1455"  # large case (300) with all varied and t_end =500
+    save_name = "InputMat_231207_1605"  # large case (400) with all varied and t_end =5000, extended grid
 
     if encoded:
         # load the encoded data
-        import_file_input = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_input_41_41.csv'
-        import_file_output = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_output_41_41.csv'
+        import_file_input = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_input_53_69.csv'
+        import_file_output = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_output_53_69.csv'
         X = pd.read_csv(import_file_input, index_col=0)
         Y = pd.read_csv(import_file_output, index_col=0)
         # convert to numpy array
@@ -390,8 +391,8 @@ if __name__ == "__main__":
         X, Y = reformat_input_output(input_mat, results)
 
     # Hyperparameter optimization
-    nodes_per_layer_set = [50]  # [5, 10, 20, 50, 100]
-    layers_set = [8]  # [2, 4, 6, 8, 10]
+    # nodes_per_layer_set = [5, 10, 20, 50, 100]
+    # layers_set = [2, 4, 6, 8, 10]
     # results = test_hyperparameters(nodes_per_layer_set, layers_set, encoding=encoded)
     # print(results)
     #
@@ -403,6 +404,6 @@ if __name__ == "__main__":
     #
     # # iterate through all the hyperparameters and plot
     # print('plotting the results for all hyperparameters')
-    for j in nodes_per_layer_set:
-        for k in layers_set:
+    for j in [100]:
+        for k in [2]:
             train_predict_performance_NN(X, Y, j, k, dL=dL, encoded=encoded, test_ratio=test_ratio)

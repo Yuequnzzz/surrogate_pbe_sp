@@ -73,14 +73,36 @@ def error_func_smape(y_true, y_pred):
 
     # calculate the error
     error_vector = np.abs(y_true - y_pred) / (0.5 * np.abs(y_true) + 0.5 * np.abs(y_pred))
-    # try to replace those true values that are very small (smaller than 0.01) with zero in the error
-    error_vector[np.where(y_true < 0.1)] = 0
+    # try to replace those true values that are very small (smaller than 1) with zero in the error
+    error_vector[np.where(y_true < 1)] = 0  # todo: to confirm
+    # fill the nan with 0
+    error_vector = np.nan_to_num(error_vector)
     # calculate the mean of the error
     error_smape = np.mean(error_vector) * 100
 
-    # try to fill the nan with 0
-    error_smape = np.nan_to_num(error_smape)
     return error_smape
+
+
+def error_func_scaled_se(y_true, y_pred):
+    """
+    calculate the error functions scaled by the sum of the true values
+    :param y_true: the true values
+    :param y_pred: the predicted values
+    :return: the scaled root mean squared error
+    """
+    # calculate the square error functions
+    se = mean_squared_error(y_true, y_pred, squared=True) * y_true.size
+    s_se = se / np.sum(y_true)
+    return s_se
+
+
+def error_func_scaled_ae(y_true, y_pred):
+
+    # calculate the square error functions
+    ae = mean_absolute_error(y_true, y_pred) * y_true.size
+    s_ae = ae / np.sum(y_true)
+    return s_ae
+    # todo: pass, because in some special cases, it does not work
 
 
 def error_gmm(y_true, x, mu, sigma, weights):
