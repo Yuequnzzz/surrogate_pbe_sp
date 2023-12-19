@@ -1,0 +1,16 @@
+-if use un-normalized data, torch structured nn, relu, 400
+RMSE = 6.094539
+training time is  471.98038268089294
+performance: zeros less frequent, still can't capture the trend accurately
+
+- if use normalized data, torch structured nn, relu,400
+RMSE = 6.127192497866877
+training time is  451.0843961238861
+
+- normalized data, torch structured nn, relu, 1024
+RMSE = 8.077129839514834
+training time is  448.44854831695557
+
+-unnormalized data, torch structured nn, relu, 1024
+RMSE = 7.2346168
+training time is  423.90992283821106

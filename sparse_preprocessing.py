@@ -66,28 +66,42 @@ def real_dist_ob(psd_data, ob_points_id):
     :return: the real probability of the observation points
     """
     # initialize
-    ob_prob = np.zeros(ob_points_id.shape)
+    ob_psd = np.zeros((psd_data.shape[0], ob_points_id.shape[1]))
     # get the real probability by interpolation
-    for i in range(ob_points_id.shape[0]):
-        ob_prob[i, :] = np.interp(ob_points_id[i, :], np.arange(psd_data.shape[1]), psd_data.iloc[i, :].tolist())
-    return ob_prob
+    for i in range(psd_data.shape[0]):
+        ob_psd[i, :] = np.interp(ob_points_id[i, :], np.arange(psd_data.shape[1]), psd_data.iloc[i, :].tolist())
+        # if flexible_ob_locations:
+        #     ob_psd[i, :] = np.interp(ob_points_id[i, :], np.arange(psd_data.shape[1]), psd_data.iloc[i, :].tolist())
+        # else:
+        #     if ob_points_id.shape[0] != 1:
+        #         raise ValueError('The ob_points_id should be a vector')
+        #     ob_psd[i, :] = np.interp(ob_points_id, np.arange(psd_data.shape[1]), psd_data.iloc[i, :].tolist())
+    return ob_psd
 
 
-def predict_psd_extrapolate(psd_data, ob_points_id, ob_prob):
+def predict_psd_extrapolate(psd_data, ob_points_id, ob_psd):
     """
     Estimate how good the fitting performance is by calculating the error
     :param psd_data: the psd data
     :param ob_points_id: the id of observation points
-    :param ob_prob: the real probability of the observation points
+    :param ob_psd: the real probability of the observation points
     :return: the predicted pdf
     """
     # initialize the error
     y_pre = np.zeros(psd_data.shape)
     # use the observation points via interpolating to calculate the predicted probability at the original position
     for i in range(ob_points_id.shape[0]):
-        # todo: in the later version, we need to consider 2d/3d extrapolation
-        y_pre[i, :] = sp.interpolate.interp1d(ob_points_id[i, :], ob_prob[i, :],
+        y_pre[i, :] = sp.interpolate.interp1d(ob_points_id[i, :], ob_psd[i, :],
                                               fill_value='extrapolate')(np.arange(psd_data.shape[1]))
+        # if flexible_ob_locations:
+        #     # todo: in the later version, we need to consider 2d/3d extrapolation
+        #     y_pre[i, :] = sp.interpolate.interp1d(ob_points_id[i, :], ob_psd[i, :],
+        #                                           fill_value='extrapolate')(np.arange(psd_data.shape[1]))
+        # else:
+        #     if ob_points_id.shape[0] != 1:
+        #         raise ValueError('The ob_points_id should be a vector')
+        #     y_pre[i, :] = sp.interpolate.interp1d(ob_points_id.reshape(-1, 1).flatten(), ob_psd[i, :],
+        #                                           fill_value='extrapolate')(np.arange(psd_data.shape[1]))
         # replace the negative value with 0
         y_pre[i, y_pre[i, :] < 0] = 0
     return y_pre
@@ -107,7 +121,9 @@ def error_extrapolate(data_psd, y_pre):
         # error[i] = error_func_relative(np.asarray(data_pdf.iloc[i, :]), y_pre[i, :].reshape(-1, 1))
         # error[i] = error_func_smape(data_psd.iloc[i, :], y_pre[i, :].reshape(-1, 1))
         error[i] = error_func_scaled_ae(data_psd.iloc[i, :], y_pre[i, :].reshape(-1, 1))
-    print(f"the max error  is {np.max(error)}")
+    print(f"the max error  is {np.max(error)}, occur at line {np.argmax(error)}")
+    print(f"the min error  is {np.min(error)}, occur at line {np.argmin(error)}")
+    print(f"the error of the last line is {error[-1]}")
     return error
 
 
@@ -202,22 +218,22 @@ def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, out
     # find the optimal number of observation points for output matrix
     # file_path_out = 'data/PBE_outputs/'
     file_path_out = 'D:/PycharmProjects/surrogatepbe/PBEsolver_outputs/'
-    # for runID in data_input_original["runID"]:
-    #     print(f"runID {int(runID)}")
-    #     try:
-    #         file = pd.read_csv(file_path_out + f"PBEsolver_{save_name}_runID{int(runID)}.csv")
-    #         for m in file.columns:
-    #             if 'pop_bin' not in m:
-    #                 file.drop(m, axis=1, inplace=True)
-    #
-    #         output_n_ob_points = find_optimal_ob_points(file,
-    #                                                     valid_lower_bound,
-    #                                                     valid_upper_bound,
-    #                                                     output_n_ob_points,
-    #                                                     dL,
-    #                                                     error_threshold=error_threshold)
-    #     except:
-    #         pass
+    for runID in data_input_original["runID"]:
+        print(f"runID {int(runID)}")
+        try:
+            file = pd.read_csv(file_path_out + f"PBEsolver_{save_name}_runID{int(runID)}.csv")
+            for m in file.columns:
+                if 'pop_bin' not in m:
+                    file.drop(m, axis=1, inplace=True)
+
+            output_n_ob_points = find_optimal_ob_points(file,
+                                                        valid_lower_bound,
+                                                        valid_upper_bound,
+                                                        output_n_ob_points,
+                                                        dL,
+                                                        error_threshold=error_threshold)
+        except:
+            pass
 
     print('the optimal number of observation points for output matrix is\n', output_n_ob_points)
 
@@ -235,9 +251,6 @@ def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, out
 
         output_alert, output_observe_points, output_observe_points_id, output_middle_id, output_width, output_pred \
             = sparse_model(file, valid_lower_bound, valid_upper_bound, output_n_ob_points, dL, error_threshold)
-        # # todo: some runs are not reliable since the distribution is out of the region
-        # if output_alert:
-        #     unreliable_runID.append(k)
         output_ob_columns = [f"ob_{x}" for x in range(output_n_ob_points)] + ['width'] + ['middle']
         output_observe_df = pd.DataFrame(
             np.concatenate((output_observe_points, output_width.reshape(-1, 1), output_middle_id.reshape(-1, 1)),
@@ -261,10 +274,9 @@ def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, out
     return X, Y
 
 
-def plot_sparse(dL, observe_points_id, observe_points, x, data, y_pred):
+def plot_sparse(x, data, y_pred):
     # the scatter plot of observation points
     plt.figure(figsize=(6, 8))
-    x_id_matrix = dL * observe_points_id
     plt.subplot(2, 1, 1)
     # plt.scatter(x_id_matrix[0, :], observe_points[0, :], label="ob_points", color="r")
     plt.plot(x, data.iloc[0, :], label="original", color="b")
@@ -331,10 +343,12 @@ if __name__ == '__main__':
     # plot_sparse(dL, observe_points_id, observe_points, x, data, y_pred)
 
     # -----------------case 2: run the whole pipeline-----------------
-    X, Y = main(save_name='InputMat_231207_1605',
+    # 1207_1605,53, 95
+    # 1213_1132, 53, 91
+    X, Y = main(save_name='InputMat_231213_1132',
                 valid_lower_bound=0.001,
                 valid_upper_bound=0.999,
-                input_n_ob_points=53,
-                output_n_ob_points=93,
+                input_n_ob_points=91,
+                output_n_ob_points=91,
                 dL=0.5,
                 error_threshold=0.05)
