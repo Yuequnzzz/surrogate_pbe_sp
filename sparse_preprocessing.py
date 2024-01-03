@@ -70,12 +70,6 @@ def real_dist_ob(psd_data, ob_points_id):
     # get the real probability by interpolation
     for i in range(psd_data.shape[0]):
         ob_psd[i, :] = np.interp(ob_points_id[i, :], np.arange(psd_data.shape[1]), psd_data.iloc[i, :].tolist())
-        # if flexible_ob_locations:
-        #     ob_psd[i, :] = np.interp(ob_points_id[i, :], np.arange(psd_data.shape[1]), psd_data.iloc[i, :].tolist())
-        # else:
-        #     if ob_points_id.shape[0] != 1:
-        #         raise ValueError('The ob_points_id should be a vector')
-        #     ob_psd[i, :] = np.interp(ob_points_id, np.arange(psd_data.shape[1]), psd_data.iloc[i, :].tolist())
     return ob_psd
 
 
@@ -93,15 +87,6 @@ def predict_psd_extrapolate(psd_data, ob_points_id, ob_psd):
     for i in range(ob_points_id.shape[0]):
         y_pre[i, :] = sp.interpolate.interp1d(ob_points_id[i, :], ob_psd[i, :],
                                               fill_value='extrapolate')(np.arange(psd_data.shape[1]))
-        # if flexible_ob_locations:
-        #     # todo: in the later version, we need to consider 2d/3d extrapolation
-        #     y_pre[i, :] = sp.interpolate.interp1d(ob_points_id[i, :], ob_psd[i, :],
-        #                                           fill_value='extrapolate')(np.arange(psd_data.shape[1]))
-        # else:
-        #     if ob_points_id.shape[0] != 1:
-        #         raise ValueError('The ob_points_id should be a vector')
-        #     y_pre[i, :] = sp.interpolate.interp1d(ob_points_id.reshape(-1, 1).flatten(), ob_psd[i, :],
-        #                                           fill_value='extrapolate')(np.arange(psd_data.shape[1]))
         # replace the negative value with 0
         y_pre[i, y_pre[i, :] < 0] = 0
     return y_pre
@@ -343,7 +328,7 @@ if __name__ == '__main__':
     # plot_sparse(dL, observe_points_id, observe_points, x, data, y_pred)
 
     # -----------------case 2: run the whole pipeline-----------------
-    # 1207_1605,53, 95
+    # 1207_1605,53, 93
     # 1213_1132, 53, 91
     X, Y = main(save_name='InputMat_231213_1132',
                 valid_lower_bound=0.001,
