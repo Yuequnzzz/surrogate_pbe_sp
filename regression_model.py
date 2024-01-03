@@ -150,8 +150,8 @@ def regression_model_encoded(X, Y, unreliable_runID, model_name, hyperparameters
     errors = pd.DataFrame(errors, index=[0])
     print(errors)
 
-    test_middle = Y_test[:, -1]
-    test_width = Y_test[:, -2]
+    test_middle = Y_test[:, 2]
+    test_width = Y_test[:, 1]
     n_ob_test = Y_test.shape[1] - 3  # exclude c, width, middle
     # center around test_middle, generate 1/2*(n_ob_test-1) evenly spaced points, with interval test_width
     x_test_left = -test_width / 2 * (n_ob_test - 1) + test_middle * dL
@@ -159,8 +159,8 @@ def regression_model_encoded(X, Y, unreliable_runID, model_name, hyperparameters
     x_test_loc = np.linspace(x_test_left, x_test_right, n_ob_test).T
 
     # get the observation locations for prediction
-    pre_middle = y_pre[:, -1]
-    pre_width = y_pre[:, -2]
+    pre_middle = y_pre[:, 2]
+    pre_width = y_pre[:, 1]
     n_ob_pre = y_pre.shape[1] - 3  # exclude c, width, middle
     x_pre_left = -pre_width / 2 * (n_ob_pre - 1) + pre_middle * dL
     x_pre_right = pre_width / 2 * (n_ob_pre - 1) + pre_middle * dL
@@ -172,8 +172,8 @@ def regression_model_encoded(X, Y, unreliable_runID, model_name, hyperparameters
     # the distribution
     plt.subplot(3, 1, 1)
     plt.xlim((0, 500))
-    plt.plot(x_test_loc[10, :], Y_test[10, 1:-2], label="case_one", color="b")
-    plt.plot(x_pre_loc[10, :], y_pre[10, 1:-2], label="case_one_pred", color="g")
+    plt.plot(x_test_loc[10, :], Y_test[10, 3:], label="case_one", color="b")
+    plt.plot(x_pre_loc[10, :], y_pre[10, 3:], label="case_one_pred", color="g")
     plt.legend()
     plt.ylabel(r"PSD $f$ [m$^{-3}\mu$m$^{-1}$]")
 
@@ -211,18 +211,30 @@ if __name__ == '__main__':
     # save_name = "InputMat_231110_0720"  # large case (300)
     # save_name = "InputMat_231115_1455"  # large case (300) with all varied and t_end =500
     save_name = "InputMat_231207_1605"  # large case (400) with all varied and t_end =5000
-    # save_name = "InputMat_231115_1455"  # large case (1024) with all varied and t_end =5000
+    # save_name = "InputMat_231213_1132"  # large case (1024) with all varied and t_end =5000
 
-    input_size = 53
-    output_size = 93
-
-    import_file_input = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_input_{input_size}_{output_size}.csv'
-    import_file_output = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_output_{input_size}_{output_size}.csv'
+    ob_input = 91
+    ob_output = 91
+    import_file_input = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_input_{ob_input}_{ob_output}_fixed_both.csv'
+    import_file_output = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_output_{ob_input}_{ob_output}_fixed_both.csv'
     X = pd.read_csv(import_file_input, index_col=0)
     Y = pd.read_csv(import_file_output, index_col=0)
     # convert to numpy array
     X = X.to_numpy()
     Y = Y.to_numpy()
+
+    # delete the second column of X, which is the RunID
+    X = np.delete(X, 1, axis=1)
+    # input_size = 53
+    # output_size = 93
+    #
+    # import_file_input = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_input_{input_size}_{output_size}.csv'
+    # import_file_output = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_output_{input_size}_{output_size}.csv'
+    # X = pd.read_csv(import_file_input, index_col=0)
+    # Y = pd.read_csv(import_file_output, index_col=0)
+    # # convert to numpy array
+    # X = X.to_numpy()
+    # Y = Y.to_numpy()
 
     # Hyperparameter optimization
     max_depths = [8, 10, 20, 25]
@@ -238,8 +250,8 @@ if __name__ == '__main__':
     #
     # iterate through all the hyperparameters and plot
     print('plotting the results for all hyperparameters')
-    for i in max_depths:
-        for j in estimators:
+    for i in [60]:
+        for j in [200]:
             print('max_depth is: ', i)
             print('n_estimators is: ', j)
             regression_model_encoded(X=X, Y=Y, unreliable_runID=[], model_name='RandomForestRegressor',

@@ -1,5 +1,8 @@
 import pickle
 
+import numpy as np
+import pandas as pd
+
 from sparse_preprocessing import *
 
 """
@@ -72,38 +75,38 @@ def run(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, outp
             data_input = data_input.drop(i, axis=1)
 
     print('input data has been loaded')
-
-    # find the optimal number of observation points for input matrix
-    input_n_ob_points = find_optimal_ob_points(data_input,
-                                               valid_lower_bound,
-                                               valid_upper_bound,
-                                               input_n_ob_points,
-                                               dL,
-                                               error_threshold=error_threshold)
-    print('the optimal number of observation points for input matrix is\n', input_n_ob_points)
-
-    # output matrix
-    # find the optimal number of observation points for output matrix
-    # file_path_out = 'data/PBE_outputs/'
+    #
+    # # find the optimal number of observation points for input matrix
+    # input_n_ob_points = find_optimal_ob_points(data_input,
+    #                                            valid_lower_bound,
+    #                                            valid_upper_bound,
+    #                                            input_n_ob_points,
+    #                                            dL,
+    #                                            error_threshold=error_threshold)
+    # print('the optimal number of observation points for input matrix is\n', input_n_ob_points)
+    #
+    # # output matrix
+    # # find the optimal number of observation points for output matrix
+    # # file_path_out = 'data/PBE_outputs/'
     file_path_out = 'D:/PycharmProjects/surrogatepbe/PBEsolver_outputs/'
-    for runID in data_input_original["runID"]:
-        print(f"runID {int(runID)}")
-        try:
-            file = pd.read_csv(file_path_out + f"PBEsolver_{save_name}_runID{int(runID)}.csv")
-            for m in file.columns:
-                if 'pop_bin' not in m:
-                    file = file.drop(m, axis=1)
-
-            output_n_ob_points = find_optimal_ob_points(file,
-                                                        valid_lower_bound,
-                                                        valid_upper_bound,
-                                                        output_n_ob_points,
-                                                        dL,
-                                                        error_threshold=error_threshold)
-        except:
-            pass
-
-    print('the optimal number of observation points for output matrix is\n', output_n_ob_points)
+    # for runID in data_input_original["runID"]:
+    #     print(f"runID {int(runID)}")
+    #     try:
+    #         file = pd.read_csv(file_path_out + f"PBEsolver_{save_name}_runID{int(runID)}.csv")
+    #         for m in file.columns:
+    #             if 'pop_bin' not in m:
+    #                 file = file.drop(m, axis=1)
+    #
+    #         output_n_ob_points = find_optimal_ob_points(file,
+    #                                                     valid_lower_bound,
+    #                                                     valid_upper_bound,
+    #                                                     output_n_ob_points,
+    #                                                     dL,
+    #                                                     error_threshold=error_threshold)
+    #     except:
+    #         pass
+    #
+    # print('the optimal number of observation points for output matrix is\n', output_n_ob_points)
 
     # check which number of observation points is larger
     if input_n_ob_points >= output_n_ob_points:
@@ -160,7 +163,11 @@ def run(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, outp
     print('the output matrix has been generated')
 
     # process the input matrix
-    input_mat = pd.DataFrame()
+    input_ob_columns = [f"ob_{x}" for x in range(n_ob_points)] + ['width'] + ['middle']
+    input_original_columns = [i for i in data_input_original.columns]
+    input_columns = input_original_columns + input_ob_columns
+    input_mat = pd.DataFrame(np.zeros((data_input.shape[0], len(input_columns))), columns=input_columns)
+
     for k in range(data_input.shape[0]):
         if k in both_runID:
             input_alert, input_observe_points, input_observe_points_id, input_middle_id, input_width, input_pred \
@@ -182,22 +189,52 @@ def run(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, outp
         input_observe_df = pd.DataFrame(
             np.concatenate((input_observe_points, input_width.reshape(-1, 1), input_middle_id.reshape(-1, 1)), axis=1),
             columns=input_ob_columns)
-        input_mat[k: k+1] = pd.concat([data_input_original[k: k+1], input_observe_df], axis=1)
+        input_observe_df.index = data_input_original[k: k+1].index
+        input_mat.iloc[k:k+1, :len(input_columns)] = pd.concat([data_input_original[k: k+1], input_observe_df], axis=1)
 
     print('the input matrix has been generated')
 
+    # separate the input and output matrix by the both_runID and only_growth_runID
+    input_mat_both = input_mat[input_mat['runID'].isin(both_runID)]
+    input_mat_growth = input_mat[input_mat['runID'].isin(only_growth_runID)]
+    output_mat_both = {}
+    output_mat_growth = {}
+    for k in output_mat.keys():
+        if k in both_runID:
+            output_mat_both[k] = output_mat[k]
+        else:
+            output_mat_growth[k] = output_mat[k]
+
     # generate training data
-    X, Y = reformat_input_output(input_mat, output_mat, input_n_ob_points, output_n_ob_points, t_sample_frac=0.25,
-                                 no_sims=5000, shuffle=False)
+    X_both, Y_both = reformat_input_output(input_mat_both, output_mat_both, n_ob_points, n_ob_points, t_sample_frac=0.25,
+                                           no_sims=5000, shuffle=False)
+    X_growth, Y_growth = reformat_input_output(input_mat_growth, output_mat_growth, n_ob_points, n_ob_points, t_sample_frac=0.25,
+                                               no_sims=5000, shuffle=False)
+    X = np.concatenate((X_both, X_growth), axis=0)
+    Y = np.concatenate((Y_both, Y_growth), axis=0)
+    print('the training data has been generated')
 
     # save the data as csv file
     export_path = 'data/sparse_training_data/'
-    export_name = f"{save_name}_input_{n_ob_points}_{n_ob_points}_fixed.csv"
+    export_name_X = f"{save_name}_input_{n_ob_points}_{n_ob_points}_fixed_total.csv"
     X_df = pd.DataFrame(X)
-    X_df.to_csv(export_path + export_name, index=True)
-    export_name = f"{save_name}_output_{n_ob_points}_{n_ob_points}_fixed.csv"
+    X_df.to_csv(export_path + export_name_X, index=True)
+    export_name_Y = f"{save_name}_output_{n_ob_points}_{n_ob_points}_fixed_total.csv"
     Y_df = pd.DataFrame(Y)
-    Y_df.to_csv(export_path + export_name, index=True)
+    Y_df.to_csv(export_path + export_name_Y, index=True)
+
+    export_name_x_both = f"{save_name}_input_{n_ob_points}_{n_ob_points}_fixed_both.csv"
+    X_both = pd.DataFrame(X_both)
+    X_both.to_csv(export_path + export_name_x_both, index=True)
+    export_name_x_growth = f"{save_name}_input_{n_ob_points}_{n_ob_points}_fixed_growth.csv"
+    X_growth = pd.DataFrame(X_growth)
+    X_growth.to_csv(export_path + export_name_x_growth, index=True)
+    export_name_y_both = f"{save_name}_output_{n_ob_points}_{n_ob_points}_fixed_both.csv"
+    Y_both = pd.DataFrame(Y_both)
+    Y_both.to_csv(export_path + export_name_y_both, index=True)
+    export_name_y_growth = f"{save_name}_output_{n_ob_points}_{n_ob_points}_fixed_growth.csv"
+    Y_growth = pd.DataFrame(Y_growth)
+    Y_growth.to_csv(export_path + export_name_y_growth, index=True)
 
     return X, Y, both_runID
 

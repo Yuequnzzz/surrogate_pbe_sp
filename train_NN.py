@@ -7,6 +7,7 @@ import psd_class
 from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
+import random
 
 
 def load_data(save_name):
@@ -283,8 +284,10 @@ def train_predict_performance_NN(X, Y, nodes_per_layer, no_layers, dL, encoded, 
 
     if encoded:
         # get the observation locations
-        test_middle = Y_test[:, -1]
-        test_width = Y_test[:, -2]
+        # test_middle = Y_test[:, -1]
+        # test_width = Y_test[:, -2]
+        test_middle = Y_test[:, 2]
+        test_width = Y_test[:, 1]
         n_ob_test = Y_test.shape[1] - 3  # exclude c, width, middle
         # center around test_middle, generate 1/2*(n_ob_test-1) evenly spaced points, with interval test_width
         x_test_left = -test_width / 2 * (n_ob_test - 1) + test_middle * dL
@@ -292,25 +295,38 @@ def train_predict_performance_NN(X, Y, nodes_per_layer, no_layers, dL, encoded, 
         x_test_loc = np.linspace(x_test_left, x_test_right, n_ob_test).T
 
         # get the observation locations for prediction
-        pre_middle = y_pre[:, -1]
-        pre_width = y_pre[:, -2]
+        # pre_middle = y_pre[:, -1]
+        # pre_width = y_pre[:, -2]
+        pre_middle = y_pre[:, 2]
+        pre_width = y_pre[:, 1]
         n_ob_pre = y_pre.shape[1] - 3  # exclude c, width, middle
         x_pre_left = -pre_width / 2 * (n_ob_pre - 1) + pre_middle * dL
         x_pre_right = pre_width / 2 * (n_ob_pre - 1) + pre_middle * dL
         x_pre_loc = np.linspace(x_pre_left, x_pre_right, n_ob_pre).T
 
         # Plot the result
-        plt.figure(figsize=(8, 6))
-        # in the title, include the number of nodes per layer and the number of layers
-        # plt.suptitle(f"nodes_per_layer = {nodes_per_layer}, layers = {no_layers}")
-        # the distribution
-        # plt.subplot(3, 1, 1)
-        plt.xlim((0, 500))
-        plt.plot(x_test_loc[11, :], Y_test[11, 1:-2], label="solver", color="b")
-        plt.plot(x_pre_loc[11, :], y_pre[11, 1:-2], label="surrogate", color="g", ls="--")
-        plt.legend(prop={'size': 25})
-        # plt.ylabel(r"PSD $f$ [m$^{-3}\mu$m$^{-1}$]")
-        # plt.xlabel(r"size $L$ [um]")
+        # plot_id = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        plot_id = random.sample(range(400), 10)
+        for p in plot_id:
+            plt.figure(figsize=(8, 6))
+            plt.plot(x_test_loc[p, :], Y_test[p, 3:], label="solver", color="b")
+            plt.plot(x_pre_loc[p, :], y_pre[p, 3:], label="surrogate", color="g", ls="--")
+            plt.legend(prop={'size': 25})
+
+            plt.show()
+
+        # plt.figure(figsize=(8, 6))
+        # # in the title, include the number of nodes per layer and the number of layers
+        # # plt.suptitle(f"nodes_per_layer = {nodes_per_layer}, layers = {no_layers}")
+        # # the distribution
+        # # plt.subplot(3, 1, 1)
+        # # plt.plot(x_test_loc[11, :], Y_test[11, 1:-2], label="solver", color="b")
+        # # plt.plot(x_pre_loc[11, :], y_pre[11, 1:-2], label="surrogate", color="g", ls="--")
+        # plt.plot(x_test_loc[20, :], Y_test[20, 3:], label="solver", color="b")
+        # plt.plot(x_pre_loc[20, :], y_pre[20, 3:], label="surrogate", color="g", ls="--")
+        # plt.legend(prop={'size': 25})
+        # # plt.ylabel(r"PSD $f$ [m$^{-3}\mu$m$^{-1}$]")
+        # # plt.xlabel(r"size $L$ [um]")
 
         # plt.subplot(3, 1, 2)
         # plt.xlim((0, 500))
@@ -378,8 +394,10 @@ if __name__ == "__main__":
 
     if encoded:
         # load the encoded data
-        import_file_input = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_input_53_69.csv'
-        import_file_output = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_output_53_69.csv'
+        # import_file_input = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_input_53_69.csv'
+        # import_file_output = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_output_53_69.csv'
+        import_file_input = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_input_91_91_fixed_both.csv'
+        import_file_output = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_output_91_91_fixed_both.csv'
         X = pd.read_csv(import_file_input, index_col=0)
         Y = pd.read_csv(import_file_output, index_col=0)
         # convert to numpy array
@@ -391,19 +409,19 @@ if __name__ == "__main__":
         X, Y = reformat_input_output(input_mat, results)
 
     # Hyperparameter optimization
-    # nodes_per_layer_set = [5, 10, 20, 50, 100]
-    # layers_set = [2, 4, 6, 8, 10]
-    # results = test_hyperparameters(nodes_per_layer_set, layers_set, encoding=encoded)
-    # print(results)
-    #
-    # # select the best hyperparameters with the minimum RMSE_tot_mean
-    # nodes_per_layer_best = results.loc[results['RMSE_tot_mean'].idxmin(), 'nodes']
-    # layers_best = results.loc[results['RMSE_tot_mean'].idxmin(), 'layers']
-    # print('the best nodes_per_layer is: ', nodes_per_layer_best)
-    # print('the best layers is: ', layers_best)
-    #
-    # # iterate through all the hyperparameters and plot
-    # print('plotting the results for all hyperparameters')
-    for j in [100]:
-        for k in [2]:
+    nodes_per_layer_set = [120, 150, 180, 200]
+    layers_set = [8, 10, 15, 20]
+    results = test_hyperparameters(nodes_per_layer_set, layers_set, encoding=encoded)
+    print(results)
+
+    # select the best hyperparameters with the minimum RMSE_tot_mean
+    nodes_per_layer_best = results.loc[results['RMSE_tot_mean'].idxmin(), 'nodes']
+    layers_best = results.loc[results['RMSE_tot_mean'].idxmin(), 'layers']
+    print('the best nodes_per_layer is: ', nodes_per_layer_best)
+    print('the best layers is: ', layers_best)
+
+    # iterate through all the hyperparameters and plot
+    print('plotting the results for all hyperparameters')
+    for j in nodes_per_layer_set:
+        for k in layers_set:
             train_predict_performance_NN(X, Y, j, k, dL=dL, encoded=encoded, test_ratio=test_ratio)
