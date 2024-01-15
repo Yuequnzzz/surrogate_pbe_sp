@@ -203,25 +203,24 @@ def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, out
     # find the optimal number of observation points for output matrix
     # file_path_out = 'data/PBE_outputs/'
     file_path_out = 'D:/PycharmProjects/surrogatepbe/PBEsolver_outputs/'
-    for runID in data_input_original["runID"]:
-        print(f"runID {int(runID)}")
-        try:
-            file = pd.read_csv(file_path_out + f"PBEsolver_{save_name}_runID{int(runID)}.csv")
-            for m in file.columns:
-                if 'pop_bin' not in m:
-                    file.drop(m, axis=1, inplace=True)
-
-            output_n_ob_points = find_optimal_ob_points(file,
-                                                        valid_lower_bound,
-                                                        valid_upper_bound,
-                                                        output_n_ob_points,
-                                                        dL,
-                                                        error_threshold=error_threshold)
-        except:
-            pass
+    # for runID in data_input_original["runID"]:
+    #     print(f"runID {int(runID)}")
+    #     try:
+    #         file = pd.read_csv(file_path_out + f"PBEsolver_{save_name}_runID{int(runID)}.csv")
+    #         for m in file.columns:
+    #             if 'pop_bin' not in m:
+    #                 file.drop(m, axis=1, inplace=True)
+    #
+    #         output_n_ob_points = find_optimal_ob_points(file,
+    #                                                     valid_lower_bound,
+    #                                                     valid_upper_bound,
+    #                                                     output_n_ob_points,
+    #                                                     dL,
+    #                                                     error_threshold=error_threshold)
+    #     except:
+    #         pass
 
     print('the optimal number of observation points for output matrix is\n', output_n_ob_points)
-
 
     output_mat = {}
     # unreliable_runID = []
@@ -243,15 +242,16 @@ def main(save_name, valid_lower_bound, valid_upper_bound, input_n_ob_points, out
         output_mat[k] = pd.concat([output_others, output_observe_df], axis=1)
 
     # generate training data
-    X, Y = reformat_input_output(input_mat, output_mat, input_n_ob_points, output_n_ob_points, t_sample_frac=0.25,
+    t_frac = 0.75
+    X, Y = reformat_input_output(input_mat, output_mat, input_n_ob_points, output_n_ob_points, t_sample_frac=t_frac,
                                  no_sims=5000, shuffle=False)
 
     # save the data as csv file
     export_path = 'data/sparse_training_data/'
-    export_name = f"{save_name}_input_{input_n_ob_points}_{output_n_ob_points}.csv"
+    export_name = f"{save_name}_input_{input_n_ob_points}_{output_n_ob_points}_{t_frac}.csv"
     X_df = pd.DataFrame(X)
     X_df.to_csv(export_path + export_name, index=True)
-    export_name = f"{save_name}_output_{input_n_ob_points}_{output_n_ob_points}.csv"
+    export_name = f"{save_name}_output_{input_n_ob_points}_{output_n_ob_points}_{t_frac}.csv"
     Y_df = pd.DataFrame(Y)
     Y_df.to_csv(export_path + export_name, index=True)
 
@@ -330,10 +330,11 @@ if __name__ == '__main__':
     # -----------------case 2: run the whole pipeline-----------------
     # 1207_1605,53, 93
     # 1213_1132, 53, 91
+    # 240103_1453, 53, 91
     X, Y = main(save_name='InputMat_231213_1132',
                 valid_lower_bound=0.001,
                 valid_upper_bound=0.999,
-                input_n_ob_points=91,
+                input_n_ob_points=53,
                 output_n_ob_points=91,
                 dL=0.5,
                 error_threshold=0.05)

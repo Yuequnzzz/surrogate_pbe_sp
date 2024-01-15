@@ -89,9 +89,6 @@ def compute_moments(y, dL=0.5):
 def my_loss(output, target):
     # Mean squared error based, but more weight on the middle and width
     loss = torch.mean((output - target)**2)
-    # m3_ini = compute_moments(target)[3]
-    # m3 = compute_moments(output)[3]
-    # c_total_ini =
     # loss = 10 * torch.mean((output[:, -1] - target[:, -1])**2) + 10 * torch.mean((output[:, -2] - target[:, -2])**2) + \
     #        torch.mean((output[:, 1:-2] - target[:, 1:-2])**2) + 10 * torch.mean((output[:, 0] - target[:, 0])**2)
     return loss
@@ -292,11 +289,13 @@ if __name__ == "__main__":
 
     # -----------------load the encoded data-----------------------
     # save_name = 'InputMat_231207_1605'
-    save_name = 'InputMat_231213_1132'
+    # save_name = 'InputMat_231213_1132'
+    save_name = 'InputMat_240103_1453'
     ob_input = 53
     ob_output = 91
-    import_file_input = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_input_{ob_input}_{ob_output}.csv'
-    import_file_output = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_output_{ob_input}_{ob_output}.csv'
+    t_frac = 0.25
+    import_file_input = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_input_{ob_input}_{ob_output}_{t_frac}.csv'
+    import_file_output = f'D:/PycharmProjects/GMM/data/sparse_training_data/{save_name}_output_{ob_input}_{ob_output}_{t_frac}.csv'
     X = pd.read_csv(import_file_input, index_col=0)
     Y = pd.read_csv(import_file_output, index_col=0)
     # convert to numpy array
@@ -446,7 +445,7 @@ if __name__ == "__main__":
     #     plt.show()
 
     # ----------------part 2: optimize hyperparameters----------------
-    nodes = [20, 50, 80]
+    nodes = [100, 120]
     layers = [4, 6, 8]
     test_hyperparameters(nodes, layers)
 
